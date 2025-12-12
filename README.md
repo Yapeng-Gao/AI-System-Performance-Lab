@@ -30,7 +30,7 @@ AI-System-Performance-Lab/
 
 ### 前置要求
 *   CMake >= 4
-*   CUDA Toolkit >= 11.8 (推荐 12.0+)
+*   CUDA Toolkit >= 12.0 (推荐 12.0+)
 *   C++17 Compiler (MSVC / GCC)
 
 ### 编译构建
