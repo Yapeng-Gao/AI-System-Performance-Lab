@@ -3,7 +3,7 @@
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![CUDA](https://img.shields.io/badge/CUDA-12%2B-green)
-![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+![License](https://img.shields.io/badge/license-GPL%20v3-blue)
 
 **AI System Performance Lab** 是一个工业级的高性能计算与大模型推理优化代码库。它是《AI 系统性能工程》五大专栏的官方配套项目，涵盖了从底层 CUDA 优化到上层大模型系统实现的完整技术栈。
 
@@ -74,5 +74,5 @@ cmake --build . --parallel 8
 
 ## 📄 许可证
 
-Distributed under the Apache 2.0 License. See `LICENSE` for more information.
+Distributed under the GNU General Public License v3.0. See `LICENSE` for more information.
 
