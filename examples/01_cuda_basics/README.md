@@ -8,7 +8,8 @@
 |------|------|----------|--------|
 | **第 1 章** | `01_hello_modern.cu` | CUDA 核心概念总览 | Grid-Block-Thread 模型、错误检查、异步执行、Unified Memory |
 | **第 2 章** | `02_hardware_query.cu` | GPU 硬件架构深度解析 | SM 架构、内存层次、L2 Cache、Tensor Core 能力、带宽分析 |
-| **第 3 章** | `03_*.cu` | *待添加* | *待补充* |
+| **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GigaThread Engine 调度、SM 映射、Wavefront 效应、PTX 内联汇编 |
+| **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT, Divergence 与 Replay | Warp 发散、Bank Conflict、指令重播、性能量化 |
 
 ## 🚀 快速开始
 
@@ -31,6 +32,12 @@ cmake --build . --parallel 8
 
 # 运行第 2 章示例
 ./bin/01_cuda_basics_02_hardware_query
+
+# 运行第 3 章示例
+./bin/01_cuda_basics_03_grid_mapping
+
+# 运行第 4 章示例
+./bin/01_cuda_basics_04_warp_divergence
 ```
 
 ---
@@ -156,9 +163,121 @@ Detected 1 CUDA Capable Device(s)
 
 ---
 
-### 第 3 章：*待添加*
+### 第 3 章：CUDA 编程模型物理映射 (`03_grid_mapping.cu`)
 
-*本章内容待补充...*
+**Grid Mapper**：可视化 GigaThread Engine 的调度逻辑与物理 SM 映射。
+
+#### 核心知识点
+
+1. **PTX 内联汇编**：使用 `asm volatile("mov.u32 %0, %smid;")` 直接读取硬件特殊寄存器 `%smid`，获取 Block 实际运行的物理 SM ID。这是比 CUDA C++ API 更底层的操作，兼容所有架构。
+
+2. **执行顺序追踪**：通过 Global Atomic 操作（`atomicAdd`）追踪 Block 的真实执行顺序（Execution Order），验证 GigaThread Engine 的调度策略。
+
+3. **Wavefront 效应观察**：
+   - 通过模拟计算负载（Busy Wait）拉长 Block 执行时间
+   - 观察多波次（Wave）调度模式
+   - 检测尾部效应（Tail Effect）：最后一个 Block 可能独占 GPU
+
+4. **负载均衡分析**：
+   - 统计每个 SM 处理的 Block 数量
+   - 验证 Round-Robin 分配策略
+   - 可视化 Block ID 到 SM ID 的映射关系
+
+#### 预期输出
+
+```
+[Host] Starting Grid Scheduler Tracer...
+[Host] GPU: NVIDIA GeForce RTX 4090, Total SMs: 128
+[Host] Launching 2561 Blocks (approx 2560 full waves + 1 tail)
+
+[Analysis 1] SM Load Balance (Top 5 & Bottom 5):
+  SM 00 processed 20 blocks
+  SM 01 processed 20 blocks
+  ...
+
+[Analysis 2] Tail Effect Detection:
+  The very last block to run was logical Block 2560
+  It ran on physical SM 0
+  Note: While this block was running, other SMs might have been IDLE if the grid size wasn't aligned to waves.
+
+[Visualizer] Logical Block ID -> Physical SM ID (First 64 Blocks):
+  Blocks 000-015:   0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+  ...
+
+[Conclusion] GigaThread Engine successfully distributed work across ALL 128 SMs. ✅
+```
+
+#### 技术细节
+
+- **SM ID 读取**：使用 PTX 汇编直接访问硬件寄存器，比软件 API 更底层、更准确
+- **原子操作**：`atomicAdd` 保证执行顺序的全局一致性，用于追踪调度顺序
+- **时钟计数**：使用 `clock64()` 记录 Block 启动时间戳，可用于分析调度延迟
+
+---
+
+### 第 4 章：线程调度：SIMT, Divergence 与 Replay (`04_warp_divergence.cu`)
+
+**Micro-benchmark**：量化分支发散与 Shared Memory Bank Conflict 的物理代价。
+
+#### 核心知识点
+
+1. **Warp Divergence（分支发散）**：
+   - **Baseline 模式**：所有线程执行相同路径，SIMT 单元满载运行
+   - **Divergent 模式**：奇偶线程走不同分支，硬件串行化执行（先执行偶数线程，再执行奇数线程）
+   - **性能影响**：理论吞吐量减半（理想情况 2.0x 性能损失）
+
+2. **Bank Conflict（存储体冲突）**：
+   - **无冲突访问**：Stride=1，32 个线程访问不同 Bank，1 个周期完成
+   - **32-way 冲突**：Stride=32，所有线程访问同一 Bank，指令重播 32 次
+   - **性能影响**：理论延迟增加 32 倍（理想情况 32.0x 性能损失）
+
+3. **性能测量技术**：
+   - 使用 `clock64()` 进行高精度周期计数
+   - 通过 `#pragma unroll` 减少循环开销，突出被测操作
+   - 使用 `volatile` 防止编译器优化掉内存访问
+
+4. **编译器优化防护**：
+   - 使用 `volatile` 变量防止编译器优化
+   - 通过死代码路径（`if (val == 999999.0f)`）防止死代码消除
+
+#### 预期输出
+
+```
+=================================================================
+   AI System Performance Lab - SIMT & Replay Analyzer   
+=================================================================
+Running on GPU: NVIDIA GeForce RTX 4090 (Arch sm_89)
+
+[Experiment 1] Measuring Warp Divergence Cost (ALU)
+  Baseline (No Branch) Cycles : 2000
+  Divergent (If-Else) Cycles  : 4000
+  >> Performance Penalty      : 2.00x Slower (Ideal: 2.0x)
+
+[Experiment 2] Measuring Instruction Replay Cost (Shared Mem)
+  Linear Access (No Conflict) : 1000 cycles
+  Stride-32 (32-way Conflict) : 32000 cycles
+  >> Replay Penalty           : 32.00x Slower (Ideal: 32.0x)
+
+Note: 'Ideal' assumes pure isolation. Real hardware pipelines may hide some latency.
+```
+
+#### 实验设计
+
+- **实验 1：Math Divergence**
+  - 对比无分支代码 vs 奇偶分支代码
+  - 验证 ALU 利用率减半（SIMT 串行化）
+  - 使用浮点运算制造计算负载
+
+- **实验 2：Bank Conflict Replay**
+  - 对比无冲突访问 vs 32-way Bank Conflict
+  - 验证指令重播机制
+  - 使用 Shared Memory 读后写操作制造依赖链
+
+#### 注意事项
+
+- 实际硬件流水线可能会隐藏部分延迟，因此实测值可能略低于理想值
+- `clock64()` 返回的是 SM 时钟周期，不是绝对时间
+- 循环次数（`PER_KERNEL_ITERS`）需要足够大以摊薄测量开销，但不要触发 TDR（超时检测与恢复）
 
 ---
 
