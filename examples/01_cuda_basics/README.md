@@ -10,11 +10,13 @@
 | **第 2 章** | `02_hardware_query.cu` | GPU 硬件架构深度解析 | SM 架构、内存层次、L2 Cache、Tensor Core 能力、带宽分析 |
 | **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GigaThread Engine 调度、SM 映射、Wavefront 效应、PTX 内联汇编 |
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT, Divergence 与 Replay | Warp 发散、Bank Conflict、指令重播、性能量化 |
+| **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
 
 ## 🚀 快速开始
 
 ### 编译构建
 
+#### Linux 环境
 ```bash
 # 在项目根目录
 mkdir build && cd build
@@ -22,22 +24,33 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel 8
 ```
 
+#### Windows/CLion 环境
+- 使用 CLion 直接构建（构建输出在 `cmake-build-debug` 或 `cmake-build-debug-visual-studio` 目录）
+- 或手动构建：
+```powershell
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --parallel 8
+```
+
 ### 运行示例
 
-编译成功后，可执行文件位于 `build/bin` 目录下：
+编译成功后，可执行文件位置：
+- **Linux**: `build/bin/` 目录
+- **Windows/CLion**: `cmake-build-debug/bin/` 或 `cmake-build-debug-visual-studio/bin/` 目录
 
 ```bash
-# 运行第 1 章示例
+# Linux: 在 build 目录下运行
 ./bin/01_cuda_basics_01_hello_modern
-
-# 运行第 2 章示例
 ./bin/01_cuda_basics_02_hardware_query
-
-# 运行第 3 章示例
 ./bin/01_cuda_basics_03_grid_mapping
-
-# 运行第 4 章示例
 ./bin/01_cuda_basics_04_warp_divergence
+./bin/01_cuda_basics_05_kernel_structure
+
+# Windows/CLion: 在 cmake-build-debug/bin 目录下运行
+# 或在 PowerShell 中（从项目根目录）
+.\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
 ```
 
 ---
@@ -82,6 +95,10 @@ cmake --build . --parallel 8
 cd examples/01_cuda_basics
 bash 01_fatbin_inspect.sh
 ```
+
+**注意**：脚本会自动检测构建目录：
+- **Windows/CLion**: `cmake-build-debug/bin` 或 `cmake-build-debug-visual-studio/bin`
+- **Linux**: `build/bin`
 
 该脚本可以展示：
 - **PTX（虚拟架构）**：中间表示代码，由驱动程序在运行时 JIT 编译到目标架构
@@ -281,9 +298,79 @@ Note: 'Ideal' assumes pure isolation. Real hardware pipelines may hide some late
 
 ---
 
+---
+
+### 第 5 章：Kernel 结构与 ABI 分析 (`05_kernel_structure.cu`)
+
+**ABI 深度解析**：揭示 Host-Device 边界上的陷阱与优化技巧。
+
+#### 核心知识点
+
+1. **结构体对齐陷阱**：
+   - Host 编译器（GCC/MSVC）和 Device 编译器（NVCC）可能采用不同的 Padding 策略
+   - `__align__` 关键字强制对齐，避免结构体布局不一致导致的 Bug
+   - 演示不同对齐策略对内存布局的影响
+
+2. **函数内联控制**：
+   - `__noinline__`：强制函数不被内联，用于调试和 ABI 分析
+   - `__forceinline__`：强制内联，消除函数调用开销
+   - 使用 `cuobjdump` 验证内联行为（查找 CAL 指令）
+
+3. **Launch Bounds 优化**：
+   - `__launch_bounds__(MAX_THREADS, MIN_BLOCKS)` 提示编译器优化寄存器使用
+   - 影响 Occupancy 和寄存器分配策略
+   - 通过 `-Xptxas=-v` 查看寄存器使用情况
+
+#### 预期输出
+
+```
+==================================================================
+   AI System Performance Lab - Kernel Structure Analyzer   
+==================================================================
+[Part 1] Testing Struct Alignment:
+  DangerousStruct size (Host): 12 bytes
+  DangerousStruct size (Device): 12 bytes
+  SafeStruct size (Host): 16 bytes (aligned)
+  SafeStruct size (Device): 16 bytes (aligned)
+
+[Part 2] Testing Inline Behavior:
+  Use 'cuobjdump -sass' to inspect CAL (Call) instructions
+  __noinline__ functions should appear as CAL instructions
+
+[Part 3] Testing Launch Bounds:
+  Kernel without __launch_bounds__ uses: 32 registers
+  Kernel with __launch_bounds__(256, 4) uses: 24 registers
+  >> Register pressure reduced, Occupancy improved!
+```
+
+#### ABI 分析工具
+
+项目提供了 `05_inspect_asm.sh` 脚本，用于分析 SASS 代码中的内联行为：
+
+```bash
+cd examples/01_cuda_basics
+bash 05_inspect_asm.sh
+```
+
+**注意**：脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）。
+
+该脚本会：
+- 搜索 SASS 代码中的 `CAL`（Call）指令
+- 验证 `__noinline__` 函数是否真的没有内联
+- 分析函数调用的实际行为
+
+#### 注意事项
+
+- 结构体对齐问题在实际项目中可能导致难以调试的 Bug
+- 函数内联会影响调试能力，但可以提升性能
+- `__launch_bounds__` 需要根据实际 Occupancy 需求调整参数
+
+---
+
 ## 🔧 工具脚本
 
 - `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
+- `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
 
 ## 📝 注意事项
 
