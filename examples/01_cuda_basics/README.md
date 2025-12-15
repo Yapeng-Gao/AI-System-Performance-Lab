@@ -11,6 +11,7 @@
 | **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GigaThread Engine 调度、SM 映射、Wavefront 效应、PTX 内联汇编 |
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT, Divergence 与 Replay | Warp 发散、Bank Conflict、指令重播、性能量化 |
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
+| **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
 
 ## 🚀 快速开始
 
@@ -47,10 +48,12 @@ cmake --build . --parallel 8
 ./bin/01_cuda_basics_03_grid_mapping
 ./bin/01_cuda_basics_04_warp_divergence
 ./bin/01_cuda_basics_05_kernel_structure
+./bin/01_cuda_basics_06_nvrtc_jit
 
 # Windows/CLion: 在 cmake-build-debug/bin 目录下运行
 # 或在 PowerShell 中（从项目根目录）
 .\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
+.\cmake-build-debug\bin\01_cuda_basics_06_nvrtc_jit.exe
 ```
 
 ---
@@ -371,6 +374,37 @@ bash 05_inspect_asm.sh
 
 - `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
 - `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
+
+### 第 6 章：NVRTC 运行时编译与 Driver API (`06_nvrtc_jit.cpp`)
+
+**运行时特化 + 动态加载**：使用 NVRTC 在运行时生成 PTX，并通过 Driver API 加载执行。
+
+#### 核心知识点
+
+1. **运行时特化**：在 Host 端将常量（如 `scale=5.0f`）写入 Kernel 源码字符串，触发编译器常量折叠。  
+2. **架构自适应**：运行时获取当前 GPU 的 Compute Capability，生成对应 `--gpu-architecture=compute_XY`，避免旧卡（如 1050, sm_61）出现 `CUDA_ERROR_INVALID_PTX`。  
+3. **混合 API**：NVRTC（Runtime Compilation）+ Driver API（`cuModuleLoadData` / `cuLaunchKernel`）+ Runtime API（`cudaMalloc` / `cudaMemcpy`）混用。  
+4. **日志与错误处理**：拉取 NVRTC 编译日志，Fail Fast。  
+
+#### 运行
+
+```bash
+# Linux
+./bin/01_cuda_basics_06_nvrtc_jit
+
+# Windows (PowerShell)
+.\cmake-build-debug\bin\01_cuda_basics_06_nvrtc_jit.exe
+```
+
+#### 预期输出（老卡示例：GTX 1050, sm_61）
+
+```
+[Host] Starting NVRTC JIT Compilation Demo...
+[NVRTC] Specialized Source Code generated:
+   out[i] = 5.0f * x[i] + y[i];
+[NVRTC] PTX generated (... bytes).
+[Host] Verification PASSED! Result is 7.0
+```
 
 ## 📝 注意事项
 
