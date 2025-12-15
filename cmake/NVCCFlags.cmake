@@ -1,8 +1,8 @@
 # 针对不同架构的编译选项
 
-# 检测 CUDA 版本
+# 检测 CUDA 版本（要求 12.0 以上）
 if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.0)
-    message(STATUS "CUDA version ${CMAKE_CUDA_COMPILER_VERSION} < 12.0. Hopper features (TMA) might not work.")
+    message(FATAL_ERROR "CUDA version ${CMAKE_CUDA_COMPILER_VERSION} < 12.0. This project requires CUDA 12.0 or higher.")
 endif()
 
 # 基础 Flags

@@ -29,29 +29,46 @@ AI-System-Performance-Lab/
 ## 🚀 快速开始 (Windows/Linux)
 
 ### 前置要求
-*   CMake >= 4
-*   CUDA Toolkit >= 12.0 (推荐 12.0+)
+*   CMake >= 4.0
+*   CUDA Toolkit >= 12.0
 *   C++17 Compiler (MSVC / GCC)
 
 ### 编译构建
 
+#### Linux 环境
 ```bash
 # 1. 创建构建目录
 mkdir build && cd build
 
-# 2. 生成构建文件 (Windows 推荐使用 Ninja 或 Visual Studio)
+# 2. 生成构建文件
 cmake .. -DCMAKE_BUILD_TYPE=Release
 
 # 3. 编译
 cmake --build . --parallel 8
 ```
 
+#### Windows/CLion 环境
+- **CLion**: 直接使用 IDE 构建（输出在 `cmake-build-debug` 目录）
+- **手动构建**:
+```powershell
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+cmake --build . --parallel 8
+```
+
 ### 运行示例
 
-编译成功后，可执行文件位于 `build/bin` 目录下：
+编译成功后，可执行文件位置：
+- **Linux**: `build/bin/` 目录
+- **Windows/CLion**: `cmake-build-debug/bin/` 或 `cmake-build-debug-visual-studio/bin/` 目录
 
 ```bash
-./bin/01_basics_main
+# Linux
+./build/bin/01_cuda_basics_01_hello_modern
+
+# Windows (PowerShell)
+.\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
 ```
 
 ## 📚 专栏内容映射
