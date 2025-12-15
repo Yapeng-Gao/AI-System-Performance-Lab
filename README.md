@@ -29,9 +29,12 @@ AI-System-Performance-Lab/
 ## 🚀 快速开始 (Windows/Linux)
 
 ### 前置要求
-*   CMake >= 4.0
-*   CUDA Toolkit >= 12.0
-*   C++17 Compiler (MSVC / GCC)
+*   **CMake**: `>= 3.25` (推荐 3.28+, 4.0 为预览版支持)
+*   **CUDA Toolkit**: `>= 12.0` (推荐 12.3+ 以支持 Hopper 完整特性)
+*   **Compiler**: C++17 Support Required
+    *   Linux: GCC >= 9.0
+    *   Windows: MSVC v143+ (Visual Studio 2022,vision 17)
+*   **Driver**: `>= 535.xx` (与 CUDA 12 匹配)
 
 ### 编译构建
 
