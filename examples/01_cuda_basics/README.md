@@ -12,6 +12,7 @@
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT, Divergence 与 Replay | Warp 发散、Bank Conflict、指令重播、性能量化 |
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
 | **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
+| **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
 
 ## 🚀 快速开始
 
@@ -49,11 +50,13 @@ cmake --build . --parallel 8
 ./bin/01_cuda_basics_04_warp_divergence
 ./bin/01_cuda_basics_05_kernel_structure
 ./bin/01_cuda_basics_06_nvrtc_jit
+./bin/01_cuda_basics_07_memory_spaces
 
 # Windows/CLion: 在 cmake-build-debug/bin 目录下运行
 # 或在 PowerShell 中（从项目根目录）
 .\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
 .\cmake-build-debug\bin\01_cuda_basics_06_nvrtc_jit.exe
+.\cmake-build-debug\bin\01_cuda_basics_07_memory_spaces.exe
 ```
 
 ---
@@ -370,11 +373,6 @@ bash 05_inspect_asm.sh
 
 ---
 
-## 🔧 工具脚本
-
-- `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
-- `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
-
 ### 第 6 章：NVRTC 运行时编译与 Driver API (`06_nvrtc_jit.cpp`)
 
 **运行时特化 + 动态加载**：使用 NVRTC 在运行时生成 PTX，并通过 Driver API 加载执行。
@@ -405,6 +403,94 @@ bash 05_inspect_asm.sh
 [NVRTC] PTX generated (... bytes).
 [Host] Verification PASSED! Result is 7.0
 ```
+
+---
+
+### 第 7 章：内存模型全景 (`07_memory_spaces.cu`)
+
+**内存层次深度解析**：探索 CUDA 的地址空间、UVA Zero-Copy、Local Memory Spilling 与 `__restrict__` 优化。
+
+#### 核心知识点
+
+1. **地址空间探测**：
+   - **Global Memory (HBM)**：设备全局内存，通过 `cudaMalloc` 分配
+   - **Global Variable (Static)**：设备静态变量，使用 `__device__` 声明
+   - **Shared Memory (SRAM)**：每个 Block 共享的片上高速缓存
+   - **Local Variable (Stack)**：线程局部变量，通常存储在寄存器中
+   - **Host Pinned Memory (UVA)**：主机固定内存，可通过 UVA 直接访问
+
+2. **UVA Zero-Copy 实战**：
+   - 使用 `cudaHostAllocMapped` 分配主机固定内存
+   - 通过 Unified Virtual Addressing (UVA) 实现 GPU 直接访问 CPU 内存
+   - 验证 Zero-Copy 功能（无需显式 `cudaMemcpy`）
+   - **性能警告**：Zero-Copy 走 PCIe 总线（~64GB/s），远慢于 HBM（~2000GB/s）
+
+3. **Local Memory Spilling（寄存器溢出）**：
+   - 当局部变量过多或使用动态索引时，编译器会将数据溢出到 Local Memory
+   - Local Memory 实际存储在 HBM 中，访问延迟极高（~400 cycles）
+   - 在 SASS 代码中表现为 `LDL`（Local Load）和 `STL`（Local Store）指令
+   - 会污染 L1 Cache，严重影响性能
+
+4. **`__restrict__` 优化**：
+   - 向编译器保证指针不会重叠（Aliasing）
+   - 允许编译器进行更激进的优化：
+     - 向量化加载（`LDG.128`）
+     - 使用 Texture Cache（`LDG.NC`）
+     - 减少内存访问指令数量
+   - 对比无 `__restrict__` 和有 `__restrict__` 的 Kernel，观察 SASS 代码差异
+
+#### 预期输出
+
+```
+[Host] Starting Memory Hierarchy Analysis...
+[Host] Launching Address Probe...
+
+[Device] === Memory Address Map ===
+  Global Memory (HBM) Ptr:    0x7f8a00000000
+  Global Variable (Static):   0x7f8a00001000
+  Shared Memory (SRAM):       0x7f8a00000000 (Small offset usually)
+  Local Variable (Stack):     0x7f8a00000000 (If address taken -> Local Mem)
+  Host Pinned Ptr (UVA/PCIe): 0x7f8a00002000
+================================
+
+[Device] Read from Host Pinned Memory: 999 (Success! UVA works)
+
+[Host] To see Local Memory Spilling instructions (LDL/STL),
+       please run the accompanying '07_inspect_sass.sh' script.
+```
+
+#### SASS 分析工具
+
+项目提供了 `07_inspect_sass.sh` 脚本，用于分析 SASS 代码中的内存访问模式：
+
+```bash
+cd examples/01_cuda_basics
+bash 07_inspect_sass.sh
+```
+
+**注意**：脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）。
+
+该脚本可以：
+- **检测 Local Memory Spilling**：搜索 `STL`/`LDL` 指令，验证寄存器溢出
+- **对比 `__restrict__` 优化**：列出相关函数，便于手动对比 SASS 代码差异
+- **验证内存访问模式**：识别向量化加载和 Texture Cache 使用
+
+#### 注意事项
+
+- UVA Zero-Copy 适合小数据量或随机访问模式，大数据量传输应使用 `cudaMemcpy`
+- Local Memory Spilling 是性能杀手，应尽量避免：
+  - 减少局部数组大小
+  - 使用 Shared Memory 替代大局部数组
+  - 避免对局部数组使用动态索引
+- `__restrict__` 是性能优化的重要工具，但需要确保指针确实不重叠
+
+---
+
+## 🔧 工具脚本
+
+- `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
+- `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
+- `07_inspect_sass.sh`：SASS 内存分析工具，用于检测 Local Memory Spilling 和 `__restrict__` 优化效果
 
 ## 📝 注意事项
 
