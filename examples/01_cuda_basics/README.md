@@ -14,6 +14,7 @@
 | **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
 | **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
+| **第 9 章** | `09_debug_and_sanitizer.cu` | 调试与错误诊断 | Compute Sanitizer、内存越界检测、数据竞争检测、非法同步检测 |
 
 ## 🚀 快速开始
 
@@ -53,6 +54,7 @@ cmake --build . --parallel 8
 ./bin/01_cuda_basics_06_nvrtc_jit
 ./bin/01_cuda_basics_07_memory_spaces
 ./bin/01_cuda_basics_08_async_pipeline
+./bin/01_cuda_basics_09_debug_and_sanitizer
 
 # Windows/CLion: 在 cmake-build-debug/bin 目录下运行
 # 或在 PowerShell 中（从项目根目录）
@@ -60,6 +62,7 @@ cmake --build . --parallel 8
 .\cmake-build-debug\bin\01_cuda_basics_06_nvrtc_jit.exe
 .\cmake-build-debug\bin\01_cuda_basics_07_memory_spaces.exe
 .\cmake-build-debug\bin\01_cuda_basics_08_async_pipeline.exe
+.\cmake-build-debug\bin\01_cuda_basics_09_debug_and_sanitizer.exe
 ```
 
 ---
@@ -563,16 +566,122 @@ bash 08_profile_nsys.sh
 
 ---
 
+### 第 9 章：调试与错误诊断 (`09_debug_and_sanitizer.cu`)
+
+**Bug Generator**：故意制造三种典型 GPU 错误，演示 Compute Sanitizer 的检测能力。
+
+#### 核心知识点
+
+1. **Compute Sanitizer 工具套件**：
+   - **Memcheck**：检测内存越界访问、未初始化内存使用、内存泄漏
+   - **Racecheck**：检测 Shared Memory 和 Global Memory 的数据竞争
+   - **Synccheck**：检测非法同步操作（如分支发散中的 `__syncthreads()`）
+   - 这些工具是 CUDA 官方提供的运行时错误检测工具，类似于 Valgrind
+
+2. **内存越界检测（Out-of-Bounds）**：
+   - 演示当线程索引超出分配的内存范围时的行为
+   - `oob_kernel` 中，当 `idx == n` 时发生越界写入
+   - Memcheck 能够精确定位越界访问的位置和线程索引
+
+3. **数据竞争检测（Race Condition）**：
+   - 演示多个线程同时读写 Shared Memory 同一地址的问题
+   - `race_kernel` 中，所有线程同时执行 `s_val += 1`，结果未定义
+   - Racecheck 能够检测到这种竞争条件，并报告冲突的线程
+
+4. **非法同步检测（Illegal Synchronization）**：
+   - 演示在分支发散区域调用 `__syncthreads()` 的问题
+   - `illegal_sync_kernel` 中，只有一半线程能到达同步点，导致死锁
+   - Synccheck 能够检测到这种非法同步，并报告发散的分支
+
+#### 运行方式
+
+```bash
+# 直接运行（会触发错误，但可能不会立即报错）
+./bin/01_cuda_basics_09_debug_and_sanitizer 0  # Out-of-Bounds
+./bin/01_cuda_basics_09_debug_and_sanitizer 1  # Race Condition
+./bin/01_cuda_basics_09_debug_and_sanitizer 2  # Illegal Sync
+
+# 使用 Sanitizer 检测（推荐）
+cd examples/01_cuda_basics
+bash 09_run_sanitizer.sh
+```
+
+#### 预期输出（使用 Sanitizer）
+
+```
+==========================================================
+   CASE 1: Detecting Out-of-Bounds Access (Memcheck)
+==========================================================
+========= COMPUTE-SANITIZER
+========= Error: out of bounds access
+=========     at 0x... in oob_kernel
+=========     by thread (0,0,0) in block (0,0,0)
+=========     Address 0x... is out of bounds
+...
+
+==========================================================
+   CASE 2: Detecting Data Race (Racecheck)
+==========================================================
+========= COMPUTE-SANITIZER
+========= Error: Race reported between Read access at ...
+=========     at 0x... in race_kernel
+=========     by thread (1,0,0) in block (0,0,0)
+=========     and Write access at ...
+=========     by thread (0,0,0) in block (0,0,0)
+...
+
+==========================================================
+   CASE 3: Detecting Illegal Sync (Synccheck)
+==========================================================
+========= COMPUTE-SANITIZER
+========= Error: Barrier divergence detected
+=========     at 0x... in illegal_sync_kernel
+=========     Barrier reached by 16 threads, expected 32
+...
+```
+
+#### 调试工具
+
+项目提供了 `09_run_sanitizer.sh` 脚本，自动运行三种 Sanitizer 工具：
+
+```bash
+cd examples/01_cuda_basics
+bash 09_run_sanitizer.sh
+```
+
+**注意**：
+- 脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）
+- **需要安装 CUDA Toolkit**（Compute Sanitizer 随 CUDA Toolkit 一起安装）
+- 脚本会依次运行三种检测工具，输出详细的错误信息
+
+该脚本可以：
+- **自动运行 Memcheck**：检测内存越界和泄漏
+- **自动运行 Racecheck**：检测数据竞争
+- **自动运行 Synccheck**：检测非法同步
+
+#### 技术细节
+
+- **Compute Sanitizer**：CUDA 11.0+ 提供的运行时错误检测工具
+- **内存越界**：可能导致程序崩溃或数据损坏，但有时可能不会立即报错
+- **数据竞争**：结果未定义，可能导致难以调试的 Bug
+- **非法同步**：会导致死锁或未定义行为，Synccheck 能够检测到
+
+#### 注意事项
+
+- Compute Sanitizer 会显著降低程序性能（通常慢 10-100 倍），仅用于调试
+- 某些错误（如异步错误）可能不会立即报错，需要等待同步点
+- 建议在开发阶段定期使用 Sanitizer 检查代码
+- Windows 环境下 Compute Sanitizer 功能有限，建议在 Linux/WSL 环境中使用
+
+---
+
 ## 🔧 工具脚本
 
 - `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
 - `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
 - `07_inspect_sass.sh`：SASS 内存分析工具，用于检测 Local Memory Spilling 和 `__restrict__` 优化效果
 - `08_profile_nsys.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Systems 分析异步流水线性能
-
-- `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
-- `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
-- `07_inspect_sass.sh`：SASS 内存分析工具，用于检测 Local Memory Spilling 和 `__restrict__` 优化效果
+- `09_run_sanitizer.sh`：调试工具脚本，使用 Compute Sanitizer 检测内存越界、数据竞争和非法同步
 
 ## 📝 注意事项
 
