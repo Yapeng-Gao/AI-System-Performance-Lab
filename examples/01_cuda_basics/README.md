@@ -13,6 +13,7 @@
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
 | **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
+| **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
 
 ## 🚀 快速开始
 
@@ -51,12 +52,14 @@ cmake --build . --parallel 8
 ./bin/01_cuda_basics_05_kernel_structure
 ./bin/01_cuda_basics_06_nvrtc_jit
 ./bin/01_cuda_basics_07_memory_spaces
+./bin/01_cuda_basics_08_async_pipeline
 
 # Windows/CLion: 在 cmake-build-debug/bin 目录下运行
 # 或在 PowerShell 中（从项目根目录）
 .\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
 .\cmake-build-debug\bin\01_cuda_basics_06_nvrtc_jit.exe
 .\cmake-build-debug\bin\01_cuda_basics_07_memory_spaces.exe
+.\cmake-build-debug\bin\01_cuda_basics_08_async_pipeline.exe
 ```
 
 ---
@@ -486,7 +489,86 @@ bash 07_inspect_sass.sh
 
 ---
 
+### 第 8 章：异步执行模型 (`08_async_pipeline.cu`)
+
+**Pipeline Concurrency**：实现 H2D -> Compute -> D2H 三级流水线，最大化 GPU 利用率。
+
+#### 核心知识点
+
+1. **Pinned Memory（页锁定内存）的必要性**：
+   - 使用 `cudaMallocHost` 分配 Pinned Memory，允许 DMA 引擎直接访问
+   - Pageable Memory（普通 `malloc`）会导致驱动介入进行临时拷贝，无法实现真正的异步传输
+   - Pinned Memory 是异步传输的前提条件
+
+2. **多 Stream 并发**：
+   - 创建多个 CUDA Stream（使用 `cudaStreamCreateWithFlags` 和 `cudaStreamNonBlocking`）
+   - 不同 Stream 中的操作可以并发执行，掩盖 PCIe 传输延迟
+   - 理想情况下，当 Stream 0 在执行计算时，Stream 1 可以在进行数据传输
+
+3. **Depth-First 调度策略**：
+   - 按 Chunk 顺序循环分配 Stream（`stream_idx = i % n_streams`）
+   - 每个 Stream 依次执行：H2D Copy -> Compute -> D2H Copy
+   - 这种模式能最大化 Overlap：当 Stream 0 在计算时，Stream 1 在拷贝
+
+4. **流水线 Overlap 验证**：
+   - 对比串行模式（Pageable Memory + Default Stream）vs 异步流水线模式（Pinned Memory + Multi-Streams）
+   - 使用 Nsight Systems 可视化时间线，观察 Copy 和 Compute 的重叠
+   - 理想情况下，异步流水线能显著提升吞吐量
+
+#### 预期输出
+
+```
+GPU: NVIDIA GeForce RTX 4090
+Data Size: 32.00 MB, Chunk Size: 1.00 MB
+
+[Serial] Starting processing 32 chunks...
+[Serial] Total Time: 245.67 ms
+------------------------------------------------
+[Pipeline] Starting processing 32 chunks with 4 streams...
+[Pipeline] Total Time: 89.23 ms
+```
+
+#### 性能分析工具
+
+项目提供了 `08_profile_nsys.sh` 脚本，使用 Nsight Systems 进行性能分析：
+
+```bash
+cd examples/01_cuda_basics
+bash 08_profile_nsys.sh
+```
+
+**注意**：
+- 脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）
+- **仅支持 Linux/WSL 环境**（Nsight Systems 需要 Linux 环境）
+- 脚本会生成 `.nsys-rep` 文件，需要在 Nsight Systems GUI 中打开
+
+该脚本可以：
+- **追踪 CUDA API 调用**：记录所有 `cudaMemcpyAsync` 和 Kernel Launch
+- **可视化时间线**：在 Nsight Systems GUI 中查看 Copy 和 Compute 的重叠情况
+- **验证 Overlap 效果**：观察 "CUDA HW" 行中的并发执行情况
+
+#### 技术细节
+
+- **异步传输**：`cudaMemcpyAsync` 需要 Pinned Memory 才能实现真正的异步
+- **Stream 同步**：使用 `cudaDeviceSynchronize()` 等待所有 Stream 完成
+- **计算负载模拟**：使用 `clock64()` 进行忙等待，模拟重计算任务
+- **Chunk 大小调优**：切得太小会导致 Launch Overhead 占比过高，切得太大 Overlap 效果差
+
+#### 注意事项
+
+- Pinned Memory 分配会占用系统内存，不要过度使用
+- Stream 数量需要根据硬件能力调整（通常 4-8 个 Stream 效果较好）
+- 理想的 Overlap 是 Compute Time ≈ Copy Time，需要根据实际负载调整 `KERNEL_LOAD` 参数
+- Windows 环境下无法直接运行 `nsys`，需要在 WSL 或 Linux 环境中使用
+
+---
+
 ## 🔧 工具脚本
+
+- `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
+- `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
+- `07_inspect_sass.sh`：SASS 内存分析工具，用于检测 Local Memory Spilling 和 `__restrict__` 优化效果
+- `08_profile_nsys.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Systems 分析异步流水线性能
 
 - `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
 - `05_inspect_asm.sh`：SASS 汇编分析工具，用于验证函数内联行为
