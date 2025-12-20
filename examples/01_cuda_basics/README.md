@@ -15,6 +15,7 @@
 | **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
 | **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
 | **第 9 章** | `09_debug_and_sanitizer.cu` | 调试与错误诊断 | Compute Sanitizer、内存越界检测、数据竞争检测、非法同步检测 |
+| **第 10 章** | `10_roofline_demo.cu` | 性能建模第一性原理 | Roofline 模型、带宽极限测试、算力极限测试、Arithmetic Intensity |
 
 ## 🚀 快速开始
 
@@ -55,6 +56,7 @@ cmake --build . --parallel 8
 ./bin/01_cuda_basics_07_memory_spaces
 ./bin/01_cuda_basics_08_async_pipeline
 ./bin/01_cuda_basics_09_debug_and_sanitizer
+./bin/01_cuda_basics_10_roofline_demo
 
 # Windows/CLion: 在 cmake-build-debug/bin 目录下运行
 # 或在 PowerShell 中（从项目根目录）
@@ -63,6 +65,7 @@ cmake --build . --parallel 8
 .\cmake-build-debug\bin\01_cuda_basics_07_memory_spaces.exe
 .\cmake-build-debug\bin\01_cuda_basics_08_async_pipeline.exe
 .\cmake-build-debug\bin\01_cuda_basics_09_debug_and_sanitizer.exe
+.\cmake-build-debug\bin\01_cuda_basics_10_roofline_demo.exe
 ```
 
 ---
@@ -675,6 +678,89 @@ bash 09_run_sanitizer.sh
 
 ---
 
+### 第 10 章：性能建模第一性原理 (`10_roofline_demo.cu`)
+
+**Roofline Empirical Prober**：实测硬件的带宽极限（Bandwidth）与算力极限（FLOPs），构建 Roofline 性能模型。
+
+#### 核心知识点
+
+1. **Roofline 模型基础**：
+   - **带宽极限（Memory Bound）**：当 Arithmetic Intensity (AI) 较低时，性能受限于内存带宽
+   - **算力极限（Compute Bound）**：当 AI 较高时，性能受限于计算能力
+   - **Roofline 曲线**：描述不同 AI 值下的性能上限，帮助识别性能瓶颈
+
+2. **带宽测试（Bandwidth Kernel）**：
+   - 使用 `float4` 向量化读写，生成 128-bit LDG/STG 指令，最大化总线利用率
+   - Grid-Stride Loop 模式，确保所有线程都有工作
+   - AI = 0（纯内存拷贝，无计算），用于测试内存带宽上限
+   - 数据规模足够大（64MB），避开 L2 Cache，直接测试 HBM 带宽
+
+3. **算力测试（Compute Kernel）**：
+   - 使用寄存器级 FMA（Fused Multiply-Add）密集计算
+   - 4 条独立的指令流（ILP），填满流水线
+   - 极高的 AI 值，确保瓶颈完全在 ALU
+   - `#pragma unroll` 展开循环，减少分支指令占比
+
+4. **理论峰值计算**：
+   - **带宽峰值**：Memory Clock × Bus Width × 2 (DDR) / 8
+   - **算力峰值**：SM Clock × SMs × Cores/SM × 2 (FMA) / 1e9
+   - 注意：CUDA 12+ 中 `clockRate` 和 `memoryClockRate` 字段已移除，需要使用 NVML API 获取准确值
+
+#### 预期输出
+
+```
+----------------------------------------------------------------
+[Theoretical Peaks] Device: NVIDIA GeForce RTX 4090 (SMs: 128)
+  > Memory Clock      : N/A (removed in CUDA 12+, using estimate: 1.00 GHz)
+  > Memory Bus Width  : 384-bit
+  > Peak Bandwidth    : 96.00 GB/s (Estimated, use NVML for accurate value)
+  > SM Clock          : N/A (removed in CUDA 12+, using estimate: 1.50 GHz)
+  > Peak FP32 Compute : 49.15 TFLOPS (Estimated)
+  > Note              : For accurate clock rates, use NVML API
+----------------------------------------------------------------
+
+[Micro-Bench 1] Measuring HBM Bandwidth...
+  > Achieved Bandwidth: 850.23 GB/s
+
+[Micro-Bench 2] Measuring FP32 Compute Peak...
+  > Achieved Compute  : 42.15 TFLOPS
+```
+
+#### 性能分析工具
+
+项目提供了 `10_profile_roofline.sh` 脚本，使用 Nsight Compute 进行 Roofline 分析：
+
+```bash
+cd examples/01_cuda_basics
+bash 10_profile_roofline.sh
+```
+
+**注意**：
+- 脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）
+- **需要安装 Nsight Compute**（随 CUDA Toolkit 一起安装）
+- 脚本会生成 `.ncu-rep` 文件，需要在 Nsight Compute GUI 中打开
+
+该脚本可以：
+- **自动运行 Roofline 分析**：使用 `--set roofline` 收集 Roofline 数据
+- **生成 Roofline 图表**：在 Nsight Compute GUI 中可视化性能瓶颈
+- **识别性能边界**：观察 Memory Bound 和 Compute Bound 两个点
+
+#### 技术细节
+
+- **Arithmetic Intensity (AI)**：计算量与数据量的比值，单位是 FLOPs/Byte
+- **Grid-Stride Loop**：确保所有线程都有工作，即使 Grid 大小小于数据规模
+- **FMA 指令**：融合乘加指令，每个周期可以执行一次乘法和一次加法
+- **ILP (Instruction Level Parallelism)**：指令级并行，通过独立的指令流填满流水线
+
+#### 注意事项
+
+- 数据规模需要足够大（建议 ≥ 64MB），以避开 L2 Cache 的影响
+- 理论峰值计算需要准确的时钟频率，CUDA 12+ 需要使用 NVML API
+- Roofline 模型是性能优化的指导工具，帮助识别瓶颈并指导优化方向
+- 实测值通常会低于理论峰值，因为实际代码存在各种开销（调度、同步等）
+
+---
+
 ## 🔧 工具脚本
 
 - `01_fatbin_inspect.sh`：二进制文件分析工具，用于查看 PTX 和 SASS 代码
@@ -682,6 +768,7 @@ bash 09_run_sanitizer.sh
 - `07_inspect_sass.sh`：SASS 内存分析工具，用于检测 Local Memory Spilling 和 `__restrict__` 优化效果
 - `08_profile_nsys.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Systems 分析异步流水线性能
 - `09_run_sanitizer.sh`：调试工具脚本，使用 Compute Sanitizer 检测内存越界、数据竞争和非法同步
+- `10_profile_roofline.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 进行 Roofline 性能建模
 
 ## 📝 注意事项
 
