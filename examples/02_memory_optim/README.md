@@ -6,7 +6,7 @@
 
 | 章节 | 文件 | 核心内容 | 知识点 |
 |------|------|----------|--------|
-| **第 11 章** | `01_global_mem_bandwidth.cu` | Global Memory 极致优化 | HBM 对齐、向量化访问 (float4)、L2 Cache 驻留控制、Coalescing 验证 |
+| **第 11 章** | `01_global_mem_bandwidth.cu` | Global Memory 极致优化 | 物理层（对齐）、指令层（向量化/Async Copy）、缓存层（LDG.NT/L2 驻留） |
 
 ## 🚀 快速开始
 
@@ -51,28 +51,37 @@ cmake --build . --parallel 8
 
 ### 第 11 章：Global Memory 极致优化 (`01_global_mem_bandwidth.cu`)
 
-**Bandwidth Micro-Benchmark**：验证 HBM 对齐、向量化访问 (float4) 与 L2 Cache 驻留控制。
+**Bandwidth Micro-Benchmark**：覆盖物理层、指令层与缓存层的所有优化手段，全面验证 Global Memory 性能优化技术。
 
 #### 核心知识点
 
-1. **Misaligned Access（错位访问）**：
+本示例包含 5 个测试项，从不同层次展示内存优化技术：
+
+1. **[物理层] Misaligned Access（错位访问）**：
    - 故意制造错位访问（Offset=1），破坏 Coalescing 机制
    - 一个 Warp 的请求会分裂成多个 Memory Transactions
    - 导致带宽利用率大幅下降
    - 演示了内存对齐对性能的严重影响
 
-2. **Aligned Scalar Copy（对齐标量拷贝）**：
-   - 标准的合并访问模式，所有线程访问连续对齐的内存
-   - 使用 `float` 类型，生成 `LDG.E.32` 指令
-   - 作为性能基准线
-
-3. **Vectorized Copy（向量化拷贝）**：
+2. **[指令层] Vectorized Copy（向量化拷贝）**：
    - 使用 `float4` 类型，强制生成 `LDG.E.128` 指令
    - 减少 75% 的指令发射压力
    - 提升内存访问效率，接近硬件带宽上限
 
-4. **L2 Persistence（L2 缓存驻留控制）**：
-   - 使用 CUDA 11/12 的 `cudaStreamSetAttribute` API
+3. **[缓存层] LDG.NT (Non-Temporal Load)**：
+   - 使用 `__ldcs` 内建函数生成 `LDG.E.128.STREAM` 指令
+   - 告诉硬件：这条数据读完就扔，不占用 L2 Cache 位置
+   - 适合流式数据（Streaming Data）场景，避免污染 L2 Cache
+   - 在数据只读一次的场景下，可以提升整体缓存命中率
+
+4. **[架构层] Async Copy Pipeline（异步拷贝流水线）**：
+   - 使用 CUDA 12+ 的 `cuda::pipeline` 和 `cuda::memcpy_async` API
+   - 在 Ampere 架构上映射为 `cp.async` 指令，在 Hopper 上为 TMA 铺路
+   - 实现 Global Memory → Shared Memory 的异步传输，绕过寄存器
+   - 演示了现代 CUDA 编程中的 Pipeline 模式，适合 GEMM 等计算密集型 Kernel
+
+5. **[缓存层] L2 Persistence（L2 缓存驻留控制）**：
+   - 使用 CUDA 11.0+ 的 `cudaStreamSetAttribute` API
    - 通过 `cudaAccessPropertyPersisting` 锁定 L2 Cache
    - 模拟深度学习中的 Weight Reuse 场景
    - 对比默认 LRU 策略与显式驻留策略的性能差异
@@ -80,17 +89,18 @@ cmake --build . --parallel 8
 #### 预期输出
 
 ```
-Target GPU: NVIDIA GeForce RTX 4090 (L2 Cache: 72.00 MB)
-Total Data: 64.00 MB
+GPU: NVIDIA GeForce RTX 4090 | L2: 72.00 MB
+Theoretical Bandwidth: 1008.00 GB/s
 
-[Misaligned (Off=1)    ] Time:  0.234 ms | Bandwidth:  548.72 GB/s
-[Aligned (Float)       ] Time:  0.156 ms | Bandwidth:  821.33 GB/s
-[Vectorized (Float4)   ] Time:  0.145 ms | Bandwidth:  883.45 GB/s
+[1. Misaligned         ]  548.72 GB/s
+[2. Vectorized float4 ]  883.45 GB/s
+[3. LDG.NT (Stream)    ]  875.23 GB/s
+[4. Async Copy         ]  890.12 GB/s
 
-=== L2 Persistence Control (Weight Reuse Simulation) ===
-[L2 Default (LRU)      ] Time:  0.089 ms | Bandwidth:  224.72 GB/s
-[L2 Persisting         ] Time:  0.045 ms | Bandwidth:  444.44 GB/s
->> L2 Control Improvement: 97.78%
+=== L2 Persistence Test (20MB Data, 50 Repeats) ===
+[L2 Default (LRU)     ]  224.72 GB/s
+[L2 Persisting         ]  444.44 GB/s
+>> Improvement: 97.78%
 ```
 
 #### 性能分析工具
@@ -116,14 +126,18 @@ bash 01_profile_bandwidth.sh
 
 - **Coalescing 机制**：当 Warp 中的线程访问连续对齐的内存时，硬件会将多个请求合并成一个 Memory Transaction
 - **向量化访问**：使用 `float4` 等向量类型可以减少指令数量，提升指令发射效率
+- **Non-Temporal Load**：`__ldcs` 内建函数生成流式加载指令，适合一次性读取的数据，避免占用 L2 Cache
+- **Async Copy Pipeline**：`cuda::pipeline` 是 CUDA 12.0+ 引入的现代异步拷贝 API，支持多阶段流水线操作
 - **L2 Cache 驻留**：通过 `cudaStreamSetAttribute` 可以控制 L2 Cache 的替换策略，适合权重重用场景
 - **数据规模**：使用 64MB 数据确保足够大以触达 HBM 带宽墙，避开 L2 Cache 的影响
 
 #### 注意事项
 
-- Misaligned Access 是性能杀手，应尽量避免非对齐的内存访问
-- Vectorized Access 可以显著提升性能，但需要确保数据对齐（128-byte 对齐）
-- L2 Persistence 功能需要 CUDA 11.0+ 和计算能力 8.0+（Ampere 及以上架构）
+- **Misaligned Access** 是性能杀手，应尽量避免非对齐的内存访问
+- **Vectorized Access** 可以显著提升性能，但需要确保数据对齐（128-byte 对齐）
+- **LDG.NT** 适合流式数据场景，如果数据会被重复访问，使用普通加载可能更好
+- **Async Copy Pipeline** 需要 CUDA 12.0+ 和计算能力 8.0+（Ampere 及以上架构）
+- **L2 Persistence** 功能需要 CUDA 11.0+ 和计算能力 8.0+（Ampere 及以上架构）
 - 实际带宽会受到硬件限制、PCIe 带宽等多种因素影响，实测值可能低于理论峰值
 
 ---
@@ -134,8 +148,19 @@ bash 01_profile_bandwidth.sh
 
 ## 📝 注意事项
 
+### CUDA 版本要求
+
+- **最低要求**：CUDA 12.0+（因为使用了 `cuda::pipeline` API）
+- **推荐版本**：CUDA 12.3+ 或 CUDA 13.1+（支持完整特性）
+- **向后兼容性**：CUDA 13.1 完全向后兼容 CUDA 12.x 的代码和 API
+- **架构要求**：
+  - Async Copy Pipeline：需要计算能力 8.0+（Ampere 及以上）
+  - L2 Persistence：需要计算能力 8.0+（Ampere 及以上）
+  - LDG.NT：需要计算能力 7.0+（Volta 及以上）
+
+### 其他注意事项
+
 - 所有示例代码遵循 CUDA 12+ 规范
 - 代码包含完整的错误检查机制
 - 支持 Windows 和 Linux 平台
-- 兼容 CUDA 11.0+ 版本（L2 Persistence 功能需要 CUDA 11.0+）
 
