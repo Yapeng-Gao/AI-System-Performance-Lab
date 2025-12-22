@@ -7,6 +7,7 @@
 | 章节 | 文件 | 核心内容 | 知识点 |
 |------|------|----------|--------|
 | **第 11 章** | `01_global_mem_bandwidth.cu` | Global Memory 极致优化 | 物理层（对齐）、指令层（向量化/Async Copy）、缓存层（LDG.NT/L2 驻留） |
+| **第 12 章** | `02_shared_mem_bank_conflict.cu` | Shared Memory Bank Conflict 分析 | Bank Conflict、Padding、XOR Swizzling |
 
 ## 🚀 快速开始
 
@@ -142,9 +143,58 @@ bash 01_profile_bandwidth.sh
 
 ---
 
+### 第 12 章：Shared Memory Bank Conflict 深度优化 (`02_shared_mem_bank_conflict.cu`)
+
+**Shared Memory Bank Conflict Analyzer**：通过微基准测试对比 Naive / Padding / XOR Swizzling 三种访问方式下的 Bank Conflict 情况和性能差异。
+
+#### 核心知识点
+
+- **Naive 访问模式（32-way Conflict）**：
+  - 使用标准布局 `__shared__ float tile[32][32]`
+  - Warp 内 32 个线程按“列”访问同一 Bank，造成严重 32-way Bank Conflict
+  - 实测 Cycles 显著放大，用于对比基线
+- **Padding 访问模式（空间换时间）**：
+  - 使用布局 `__shared__ float tile[32][33]`
+  - 每行起始地址相差 33 个 word，满足 \(33 \bmod 32 = 1\)
+  - 行与行的起始 Bank 轮转，从而消除 Conflict
+- **XOR Swizzling（现代 Tensor Core 常用技巧）**：
+  - 保持紧凑布局 `__shared__ float tile[32][32]`
+  - 使用 `physical_col = logical_col ^ logical_row` 映射逻辑列到物理 Bank
+  - 在不增加额外空间的前提下消除 Bank Conflict
+
+#### 预期输出
+
+运行可执行文件 `02_memory_optim_02_shared_mem_bank_conflict`（或 `.exe`）时，预期会看到类似输出（Cycles 仅供参考）：
+
+```
+[Naive]   32-way Conflict Cycles: 12345678
+[Padding] Conflict-Free Cycles  : 456789
+[Swizzle] XOR Pattern Cycles    : 432109
+
+=== Performance Gain ===
+Padding Speedup : 20.00x
+Swizzle Speedup : 18.50x
+>> Result: SUCCESS. Heavy conflicts detected and resolved.
+```
+
+#### 技术细节
+
+- **Bank Conflict 本质**：一个 Warp 内多个线程同时访问同一 Bank，会被硬件拆分为多次序列化访问，导致实际 Latency 放大
+- **Padding 技巧**：通过让每行起始地址在 Bank 空间中“轮转”，让同一列访问时落在不同 Bank
+- **XOR Swizzling**：通过简单的 `XOR` 运算将 (row, col) 重新映射为物理地址，是现代 GEMM/Tensor Core Kernel 中常见的 shared memory 优化手段
+- **clock64 计时**：用 `clock64()` 在设备端统计循环内的访问延迟，用于放大并对比不同模式下的 Cycles 差异
+
+#### 注意事项
+
+- 该示例默认单 Block、32 线程，方便观察单 Warp 级别的 Bank Conflict 行为
+- 实际大规模 Kernel 中还需考虑多 Warp、多 Block 之间的调度与占用情况
+
+---
+
 ## 🔧 工具脚本
 
-- `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析内存访问模式和带宽利用率
+- `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析 Global Memory 访问模式和带宽利用率
+- `02_profile_banks.sh`：Shared Memory Bank Conflict 分析脚本（Linux/WSL 专用），使用 Nsight Compute 采集共享内存 Wavefront 等指标，验证 Naive / Padding / Swizzling 的 Bank Conflict 差异
 
 ## 📝 注意事项
 
