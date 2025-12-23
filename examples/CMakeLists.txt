@@ -6,10 +6,22 @@ find_package(CUDAToolkit REQUIRED)
 
 # 1. 定义宏：如何构建一个 CUDA/C++ 示例
 macro(create_cuda_example target_name source_file)
-    add_executable(${target_name} ${source_file})
+    # 确保源文件路径是绝对路径
+    if(IS_ABSOLUTE ${source_file})
+        set(abs_source_file ${source_file})
+    else()
+        get_filename_component(abs_source_file ${source_file} ABSOLUTE BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+    
+    # 明确设置 .cu 文件的语言属性为 CUDA（必须在 add_executable 之前）
+    if(abs_source_file MATCHES "\\.cu$")
+        set_source_files_properties(${abs_source_file} PROPERTIES LANGUAGE CUDA)
+    endif()
+    
+    add_executable(${target_name} ${abs_source_file})
 
     # 读取源代码内容用于依赖检测
-    file(READ ${source_file} source_content)
+    file(READ ${abs_source_file} source_content)
 
     # --- 逻辑 A: 检测是否需要链接 aspl_core ---
     string(FIND "${source_content}" "aspl/" found_aspl_header)
@@ -37,7 +49,7 @@ macro(create_cuda_example target_name source_file)
 
     # --- 逻辑 C: 编译选项配置 ---
     # 启用 CUDA 分离编译 (仅针对 .cu 文件)
-    if(source_file MATCHES "\\.cu$")
+    if(abs_source_file MATCHES "\\.cu$")
         set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     endif()
 
@@ -52,7 +64,10 @@ macro(create_cuda_example target_name source_file)
 endmacro()
 
 # 2. 自动扫描：递归查找所有 .cu 和 .cpp 文件 (新增 .cpp 支持)
-file(GLOB_RECURSE ALL_EXAMPLE_SRCS "*.cu" "*.cpp")
+file(GLOB_RECURSE ALL_EXAMPLE_SRCS 
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cu" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
 
 foreach(source_file ${ALL_EXAMPLE_SRCS})
     # 解析文件路径

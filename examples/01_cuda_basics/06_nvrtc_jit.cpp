@@ -71,7 +71,8 @@ int main() {
     CUdevice cuDevice;
     CU_CHECK(cuDeviceGet(&cuDevice, 0));
     CUcontext cuContext;
-    CU_CHECK(cuCtxCreate(&cuContext, 0, cuDevice));
+    // CUDA 13.1+ requires CUctxCreateParams parameter (can be NULL for default)
+    CU_CHECK(cuCtxCreate(&cuContext, NULL, 0, cuDevice));
 
     // --- 步骤 1: 准备源码 (Runtime Specialization) ---
     // 假设运行时决定 scale = 5.0f
