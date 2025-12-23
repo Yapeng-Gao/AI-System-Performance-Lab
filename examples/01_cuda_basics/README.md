@@ -90,13 +90,13 @@ cmake --build . --parallel 8
 
 #### 预期输出
 
-```
+```shell
 [Host] Starting Modern CUDA Hello World...
-[Host] GPU Name: NVIDIA GeForce RTX 4090
-[Host] SM Count: 128
-[Host] Compute Capability: 8.9
+[Host] GPU Name: NVIDIA GeForce RTX 5090
+[Host] SM Count: 170
+[Host] Compute Capability: 12.0
 [Host] Launching Kernel...
-[Device] Kernel running on SM arch sm_890
+[Device] Kernel running on SM arch sm_750
 [Device] GridDim=1, BlockDim=32
 [Host] Verifying results...
 [Host] Verification PASSED! [OK]
@@ -118,7 +118,15 @@ bash 01_fatbin_inspect.sh
 该脚本可以展示：
 - **PTX（虚拟架构）**：中间表示代码，由驱动程序在运行时 JIT 编译到目标架构
 - **SASS（真实架构）**：实际运行在 GPU 上的机器码
+```shell
+=== 1. Inspecting Virtual Architectures (PTX) ===
+PTX is just-in-time compiled by the driver.
+arch = sm_75
 
+=== 2. Inspecting Real Architectures (SASS) ===
+SASS is the actual machine code running on silicon.
+arch = sm_75
+```
 这可以验证 CMake 配置中的 `CMAKE_CUDA_ARCHITECTURES` 是否生效。
 
 ---
@@ -153,30 +161,29 @@ bash 01_fatbin_inspect.sh
 
 #### 预期输出
 
-```
+```shell
 =================================================================
-   AI System Performance Lab - Hardware Topology Detective   
+   AI System Performance Lab - Hardware Topology Detective
 =================================================================
 Detected 1 CUDA Capable Device(s)
 
-[Device 0]: NVIDIA GeForce RTX 4090
+[Device 0]: NVIDIA GeForce RTX 5090
 -----------------------------------------------------------------
   [Architecture]
-    Compute Capability      : 8.9 (Ampere / Ada class)
+    Compute Capability      : 12.0 (Hopper / Blackwell class)
   [Compute Topology]
-    Multiprocessors (SMs)   : 128
-    CUDA Cores / SM         : 128
-    Total CUDA Cores        : 16384
+    Multiprocessors (SMs)   : 170
+    CUDA Cores / SM         : Unknown (Architecture not indexed)
     GPU Clock Rate          : N/A (removed in CUDA 12+)
   [Memory Hierarchy]
-    Global Memory (HBM/DDR) : 24.00 GB
-    Memory Bus Width        : 384-bit
+    Global Memory (HBM/DDR) : 31.36 GB
+    Memory Bus Width        : 512-bit
     Memory Clock Rate       : N/A (removed in CUDA 12+)
     Theoretical Bandwidth   : N/A (use nvml API for accurate value)
-    L2 Cache Size           : 72.00 MB (Key for residency control)
+    L2 Cache Size           : 96.00 MB (Key for residency control)
   [SM Micro-Architecture]
     Max Shared Mem / Block  : 48.00 KB
-    Max Shared Mem (Opt-in) : 164.00 KB (Dynamic)
+    Max Shared Mem (Opt-in) : 99.00 KB (Dynamic)
     Max Registers / Block   : 65536
     Max Threads / Block     : 1024
     Max Threads / SM        : 1536
@@ -184,8 +191,8 @@ Detected 1 CUDA Capable Device(s)
   [Modern Features Support]
     Unified Addressing      : Yes
     Managed Memory          : Yes
-    TMA (Tensor Mem Accel)  : No
-    Thread Block Clusters   : No
+    TMA (Tensor Mem Accel)  : Supported (Likely)
+    Thread Block Clusters   : Supported (Likely)
 ```
 
 #### 注意事项
@@ -217,26 +224,30 @@ Detected 1 CUDA Capable Device(s)
 
 #### 预期输出
 
-```
+```shell
 [Host] Starting Grid Scheduler Tracer...
-[Host] GPU: NVIDIA GeForce RTX 4090, Total SMs: 128
-[Host] Launching 2561 Blocks (approx 2560 full waves + 1 tail)
+[Host] GPU: NVIDIA GeForce RTX 5090, Total SMs: 170
+[Host] Launching 3401 Blocks (approx 20 full waves + 1 tail)
 
 [Analysis 1] SM Load Balance (Top 5 & Bottom 5):
-  SM 00 processed 20 blocks
+  SM 00 processed 21 blocks
   SM 01 processed 20 blocks
+  SM 02 processed 20 blocks
+  SM 03 processed 20 blocks
+  SM 04 processed 20 blocks
   ...
 
 [Analysis 2] Tail Effect Detection:
-  The very last block to run was logical Block 2560
-  It ran on physical SM 0
+  The very last block to run was logical Block 3350
+  It ran on physical SM 162
   Note: While this block was running, other SMs might have been IDLE if the grid size wasn't aligned to waves.
 
 [Visualizer] Logical Block ID -> Physical SM ID (First 64 Blocks):
-  Blocks 000-015:   0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-  ...
 
-[Conclusion] GigaThread Engine successfully distributed work across ALL 128 SMs. ✅
+  Blocks 000-015:   0   1  22  23  44  45  66  67  88  89 110 111 132 133   2   3
+  Blocks 016-031:  24  25  46  47  68  69  90  91 112 113 134 135   4   5  26  27
+  Blocks 032-047:  48  49  70  71  92  93 114 115 136 137   6   7  28  29  50  51
+  Blocks 048-063:  72  73  94  95 116 117 138 139 154 155   8   9  30  31  52  53
 ```
 
 #### 技术细节
@@ -274,21 +285,21 @@ Detected 1 CUDA Capable Device(s)
 
 #### 预期输出
 
-```
+```shell
 =================================================================
-   AI System Performance Lab - SIMT & Replay Analyzer   
+   AI System Performance Lab - SIMT & Replay Analyzer
 =================================================================
-Running on GPU: NVIDIA GeForce RTX 4090 (Arch sm_89)
+Running on GPU: NVIDIA GeForce RTX 5090 (Arch sm_120)
 
 [Experiment 1] Measuring Warp Divergence Cost (ALU)
-  Baseline (No Branch) Cycles : 2000
-  Divergent (If-Else) Cycles  : 4000
-  >> Performance Penalty      : 2.00x Slower (Ideal: 2.0x)
+  Baseline (No Branch) Cycles : 1
+  Divergent (If-Else) Cycles  : 1
+  >> Performance Penalty      : 1.00x Slower (Ideal: 2.0x)
 
 [Experiment 2] Measuring Instruction Replay Cost (Shared Mem)
-  Linear Access (No Conflict) : 1000 cycles
-  Stride-32 (32-way Conflict) : 32000 cycles
-  >> Replay Penalty           : 32.00x Slower (Ideal: 32.0x)
+  Linear Access (No Conflict) : 39935 cycles
+  Stride-32 (32-way Conflict) : 162122 cycles
+  >> Replay Penalty           : 4.06x Slower (Ideal: 32.0x)
 
 Note: 'Ideal' assumes pure isolation. Real hardware pipelines may hide some latency.
 ```
@@ -338,24 +349,22 @@ Note: 'Ideal' assumes pure isolation. Real hardware pipelines may hide some late
 
 #### 预期输出
 
-```
-==================================================================
-   AI System Performance Lab - Kernel Structure Analyzer   
-==================================================================
-[Part 1] Testing Struct Alignment:
-  DangerousStruct size (Host): 12 bytes
-  DangerousStruct size (Device): 12 bytes
-  SafeStruct size (Host): 16 bytes (aligned)
-  SafeStruct size (Device): 16 bytes (aligned)
+```shell
+=== [Module A] 05. Kernel Structure & ABI Analysis ===
 
-[Part 2] Testing Inline Behavior:
-  Use 'cuobjdump -sass' to inspect CAL (Call) instructions
-  __noinline__ functions should appear as CAL instructions
+[Host] Checking Structure Layout...
+[Host]   DangerousStruct: Offset of b = 4 bytes
+[Host]   SafeStruct:      Offset of b = 4 bytes
+[Host] Launching Alignment Kernel...
+[Device] DangerousStruct: Offset of b = 4 bytes
+[Device] SafeStruct:      Offset of b = 4 bytes
+[Device] Values: s1.b=42 (Expected 42), s2.b=100 (Expected 100)
 
-[Part 3] Testing Launch Bounds:
-  Kernel without __launch_bounds__ uses: 32 registers
-  Kernel with __launch_bounds__(256, 4) uses: 24 registers
-  >> Register pressure reduced, Occupancy improved!
+[Host] Inlining kernels executed. Run '05_inspect_asm.sh' to see SASS differences.
+
+[Host] Launch Bounds kernels executed.
+       CHECK YOUR COMPILE OUTPUT (Ninja log) for 'ptxas info' lines!
+       You should see different register counts for default vs bounded kernels.
 ```
 
 #### ABI 分析工具
@@ -373,7 +382,56 @@ bash 05_inspect_asm.sh
 - 搜索 SASS 代码中的 `CAL`（Call）指令
 - 验证 `__noinline__` 函数是否真的没有内联
 - 分析函数调用的实际行为
+```shell
+                                                                                      /* 0x000fcc0000000f00 */
+        /*0050*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
+                                                                                      /* 0x000fea0003c00000 */
+        /*0060*/                   MOV R3, 0x4 ;                                      /* 0x0000000400037802 */
+--
+        /*0120*/                   MOV R21, 0x0 ;                                     /* 0x0000000000157802 */
+                                                                                      /* 0x000fcc0000000f00 */
+        /*0130*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
+                                                                                      /* 0x001fea0003c00000 */
+        /*0140*/                   IMAD.MOV.U32 R8, RZ, RZ, 0x4 ;                     /* 0x00000004ff087424 */
+--
+        /*01e0*/                   MOV R21, 0x0 ;                                     /* 0x0000000000157802 */
+                                                                                      /* 0x000fcc0000000f00 */
+        /*01f0*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
+                                                                                      /* 0x001fea0003c00000 */
+        /*0200*/                   IMAD.MOV.U32 R8, RZ, RZ, c[0x0][0x164] ;           /* 0x00005900ff087624 */
+--
+        /*02a0*/                   MOV R21, 0x0 ;                                     /* 0x0000000000157802 */
+                                                                                      /* 0x000fcc0000000f00 */
+        /*02b0*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
+                                                                                      /* 0x001fea0003c00000 */
+        /*02c0*/                   EXIT ;                                             /* 0x000000000000794d */
 
+--------------------------------------------------------
+NOTE:
+1. 'CAL' instruction means a subroutine call (no-inline).
+2. If you don't see CAL for forceinline_kernel, it was successfully inlined.
+========================================================
+
+========================================================
+   SASS Analysis: Parameter Loading (Constant Memory)
+========================================================
+Searching for Constant Memory loads (c[0x0])...
+These instructions move kernel arguments from Bank 0 to Registers:
+
+        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
+        /*0040*/                   ISETP.GE.AND P0, PT, R0, c[0x0][0x168], PT ;       /* 0x00005a0000007a0c */
+        /*ef80*/                   IMAD.WIDE R2, R0, R3, c[0x0][0x160] ;              /* 0x0000580000027625 */
+        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
+        /*0040*/                   ISETP.GE.AND P0, PT, R0, c[0x0][0x168], PT ;       /* 0x00005a0000007a0c */
+        /*ef80*/                   IMAD.WIDE R2, R0, R3, c[0x0][0x160] ;              /* 0x0000580000027625 */
+        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
+        /*0030*/                   IADD3 R0, R2, c[0x0][0x168], RZ ;                  /* 0x00005a0002007a10 */
+        /*0040*/                   IMAD.WIDE R2, R2, R3, c[0x0][0x160] ;              /* 0x0000580002027625 */
+        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
+
+... (showing first 10 occurrences)
+========================================================
+```
 #### 注意事项
 
 - 结构体对齐问题在实际项目中可能导致难以调试的 Bug
@@ -405,11 +463,11 @@ bash 05_inspect_asm.sh
 
 #### 预期输出（老卡示例：GTX 1050, sm_61）
 
-```
+```shell
 [Host] Starting NVRTC JIT Compilation Demo...
 [NVRTC] Specialized Source Code generated:
    out[i] = 5.0f * x[i] + y[i];
-[NVRTC] PTX generated (... bytes).
+[NVRTC] PTX generated (1272 bytes).
 [Host] Verification PASSED! Result is 7.0
 ```
 
@@ -450,16 +508,16 @@ bash 05_inspect_asm.sh
 
 #### 预期输出
 
-```
+```shell
 [Host] Starting Memory Hierarchy Analysis...
 [Host] Launching Address Probe...
 
 [Device] === Memory Address Map ===
-  Global Memory (HBM) Ptr:    0x7f8a00000000
-  Global Variable (Static):   0x7f8a00001000
-  Shared Memory (SRAM):       0x7f8a00000000 (Small offset usually)
-  Local Variable (Stack):     0x7f8a00000000 (If address taken -> Local Mem)
-  Host Pinned Ptr (UVA/PCIe): 0x7f8a00002000
+  Global Memory (HBM) Ptr:    0x78138b000000
+  Global Variable (Static):   0x78138b400800
+  Shared Memory (SRAM):       0x781400000400 (Small offset usually)
+  Local Variable (Stack):     0x78139dfffce0 (If address taken -> Local Mem)
+  Host Pinned Ptr (UVA/PCIe): 0x78138b200000
 ================================
 
 [Device] Read from Host Pinned Memory: 999 (Success! UVA works)
@@ -483,7 +541,50 @@ bash 07_inspect_sass.sh
 - **检测 Local Memory Spilling**：搜索 `STL`/`LDL` 指令，验证寄存器溢出
 - **对比 `__restrict__` 优化**：列出相关函数，便于手动对比 SASS 代码差异
 - **验证内存访问模式**：识别向量化加载和 Texture Cache 使用
+```shell
+========================================================
+   SASS Analysis: Local Memory Spilling
+========================================================
+Searching for Local Store (STL) and Local Load (LDL) instructions...
+These indicate data is spilling to HBM (Slow!).
 
+                                                                                      /* 0x000fc40000000028 */
+        /*00c0*/                   FFMA R9, R3.reuse, R40.reuse, 5 ;                  /* 0x40a0000003097423 */
+                                                                                      /* 0x0c0fe40000000028 */
+        /*00d0*/                   FFMA R8, R3.reuse, R40.reuse, 4 ;                  /* 0x4080000003087423 */
+                                                                                      /* 0x0c0fe20000000028 */
+        /*00e0*/                   STL.128 [R1], R4 ;                                 /* 0x0000000401007387 */
+--
+                                                                                      /* 0x0c0fe40000000028 */
+        /*0110*/                   FFMA R13, R3.reuse, R40.reuse, 9 ;                 /* 0x41100000030d7423 */
+                                                                                      /* 0x0c0fe40000000028 */
+        /*0120*/                   FFMA R12, R3.reuse, R40.reuse, 8 ;                 /* 0x41000000030c7423 */
+                                                                                      /* 0x0c0fe20000000028 */
+        /*0130*/                   STL.128 [R1+0x10], R8 ;                            /* 0x0000100801007387 */
+--
+                                                                                      /* 0x0c0fe40000000028 */
+        /*0160*/                   FFMA R29, R3.reuse, R40.reuse, 37 ;                /* 0x42140000031d7423 */
+                                                                                      /* 0x0c0fe40000000028 */
+        /*0170*/                   FFMA R28, R3.reuse, R40.reuse, 36 ;                /* 0x42100000031c7423 */
+                                                                                      /* 0x0c0fe20000000028 */
+        /*0180*/                   STL.128 [R1+0x20], R12 ;                           /* 0x0000200c01007387 */
+
+NOTE: If you see STL/LDL inside 'force_local_memory_spill', spilling occurred.
+========================================================
+
+========================================================
+   SASS Analysis: __restrict__ Optimization
+========================================================
+Comparing No-Restrict vs With-Restrict kernels...
+Ideally, 'With-Restrict' might use LDG.NC (Non-coherent/Texture) or fewer instructions.
+
+[Functions found in binary]
+                Function : _Z17add_with_restrictPfS_S_i
+                Function : _Z15add_no_restrictPfS_S_i
+
+Tip: Use 'cuobjdump -sass ... > out.txt' to manually compare the assembly.
+========================================================
+```
 #### 注意事项
 
 - UVA Zero-Copy 适合小数据量或随机访问模式，大数据量传输应使用 `cudaMemcpy`
@@ -524,14 +625,14 @@ bash 07_inspect_sass.sh
 #### 预期输出
 
 ```
-GPU: NVIDIA GeForce RTX 4090
+GPU: NVIDIA GeForce RTX 5090
 Data Size: 32.00 MB, Chunk Size: 1.00 MB
 
 [Serial] Starting processing 32 chunks...
-[Serial] Total Time: 245.67 ms
+[Serial] Total Time: 40.20 ms
 ------------------------------------------------
 [Pipeline] Starting processing 32 chunks with 4 streams...
-[Pipeline] Total Time: 89.23 ms
+[Pipeline] Total Time: 1.32 ms
 ```
 
 #### 性能分析工具
@@ -552,7 +653,31 @@ bash 08_profile_nsys.sh
 - **追踪 CUDA API 调用**：记录所有 `cudaMemcpyAsync` 和 Kernel Launch
 - **可视化时间线**：在 Nsight Systems GUI 中查看 Copy 和 Compute 的重叠情况
 - **验证 Overlap 效果**：观察 "CUDA HW" 行中的并发执行情况
+```shell
+========================================================
+   Profiling with Nsight Systems (nsys)
+========================================================
+Tracing CUDA API and GPU Workload...
 
+Collecting data...
+GPU: NVIDIA GeForce RTX 5090
+Data Size: 32.00 MB, Chunk Size: 1.00 MB
+
+[Serial] Starting processing 32 chunks...
+[Serial] Total Time: 14.20 ms
+------------------------------------------------
+[Pipeline] Starting processing 32 chunks with 4 streams...
+[Pipeline] Total Time: 1.41 ms
+Generating '/tmp/nsys-report-c086.qdstrm'
+[1/1] [========================100%] pipeline_trace.nsys-rep
+Generated:
+        /data/AI-System-Performance-Lab/build/pipeline_trace.nsys-rep
+
+========================================================
+Done! Please open 'pipeline_trace.nsys-rep' in Nsight Systems GUI.
+Look for the 'CUDA HW' row to see the overlap.
+========================================================
+```
 #### 技术细节
 
 - **异步传输**：`cudaMemcpyAsync` 需要 Pinned Memory 才能实现真正的异步
@@ -611,36 +736,55 @@ bash 09_run_sanitizer.sh
 
 #### 预期输出（使用 Sanitizer）
 
-```
-==========================================================
-   CASE 1: Detecting Out-of-Bounds Access (Memcheck)
-==========================================================
-========= COMPUTE-SANITIZER
-========= Error: out of bounds access
-=========     at 0x... in oob_kernel
-=========     by thread (0,0,0) in block (0,0,0)
-=========     Address 0x... is out of bounds
-...
+```shell
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (19,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (21,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (23,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (25,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (27,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (29,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+========= Barrier error detected. Divergent thread(s) in warp.
+=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
+=========     by thread (31,0,0) in block (0,0,0)
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
+=========
+CUDA Error: unspecified launch failure at /data/AI-System-Performance-Lab/examples/01_cuda_basics/09_debug_and_sanitizer.cu:104
+========= Target application returned an error
+========= ERROR SUMMARY: 16 errors
 
-==========================================================
-   CASE 2: Detecting Data Race (Racecheck)
-==========================================================
-========= COMPUTE-SANITIZER
-========= Error: Race reported between Read access at ...
-=========     at 0x... in race_kernel
-=========     by thread (1,0,0) in block (0,0,0)
-=========     and Write access at ...
-=========     by thread (0,0,0) in block (0,0,0)
-...
-
-==========================================================
-   CASE 3: Detecting Illegal Sync (Synccheck)
-==========================================================
-========= COMPUTE-SANITIZER
-========= Error: Barrier divergence detected
-=========     at 0x... in illegal_sync_kernel
-=========     Barrier reached by 16 threads, expected 32
-...
+Done. Analyze the output above to find the bugs.
 ```
 
 #### 调试工具
@@ -710,20 +854,20 @@ bash 09_run_sanitizer.sh
 
 ```
 ----------------------------------------------------------------
-[Theoretical Peaks] Device: NVIDIA GeForce RTX 4090 (SMs: 128)
+[Theoretical Peaks] Device: NVIDIA GeForce RTX 5090 (SMs: 170)
   > Memory Clock      : N/A (removed in CUDA 12+, using estimate: 1.00 GHz)
-  > Memory Bus Width  : 384-bit
-  > Peak Bandwidth    : 96.00 GB/s (Estimated, use NVML for accurate value)
+  > Memory Bus Width  : 512-bit
+  > Peak Bandwidth    : 128.00 GB/s (Estimated, use NVML for accurate value)
   > SM Clock          : N/A (removed in CUDA 12+, using estimate: 1.50 GHz)
-  > Peak FP32 Compute : 49.15 TFLOPS (Estimated)
+  > Peak FP32 Compute : 65.28 TFLOPS (Estimated)
   > Note              : For accurate clock rates, use NVML API
 ----------------------------------------------------------------
 
 [Micro-Bench 1] Measuring HBM Bandwidth...
-  > Achieved Bandwidth: 850.23 GB/s
+  > Achieved Bandwidth: 2087.03 GB/s
 
 [Micro-Bench 2] Measuring FP32 Compute Peak...
-  > Achieved Compute  : 42.15 TFLOPS
+  > Achieved Compute  : 87.20 TFLOPS
 ```
 
 #### 性能分析工具
@@ -744,7 +888,24 @@ bash 10_profile_roofline.sh
 - **自动运行 Roofline 分析**：使用 `--set roofline` 收集 Roofline 数据
 - **生成 Roofline 图表**：在 Nsight Compute GUI 中可视化性能瓶颈
 - **识别性能边界**：观察 Memory Bound 和 Compute Bound 两个点
+```shell
+Using binary: /data/AI-System-Performance-Lab/build/bin/01_cuda_basics_10_roofline_demo
 
+==========================================================
+   Profiling Roofline with Nsight Compute (ncu)
+==========================================================
+Output: roofline_report.ncu-rep
+
+==ERROR== unrecognised option '--output'. Use --help for further details.
+
+==========================================================
+Done!
+Please open 'roofline_report.ncu-rep' in Nsight Compute GUI.
+You will see two dots on the chart:
+  1. One hitting the sloped ceiling (Memory Bound)
+  2. One hitting the flat ceiling (Compute Bound)
+==========================================================
+```
 #### 技术细节
 
 - **Arithmetic Intensity (AI)**：计算量与数据量的比值，单位是 FLOPs/Byte
