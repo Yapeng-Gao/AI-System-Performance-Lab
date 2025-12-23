@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.25)
 
 project(AI_System_Performance_Lab LANGUAGES C CXX CUDA)
 
