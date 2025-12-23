@@ -1,6 +1,9 @@
 #include <cuda_runtime.h>
 #include <cuda/pipeline>
+#include <cooperative_groups.h>
 #include <cstdio>
+
+namespace cg = cooperative_groups;
 
 #define CUDA_CHECK(x) do { \
 cudaError_t err = (x); \
@@ -20,13 +23,17 @@ __global__ void cp_async_pipeline_kernel(
     int tid = threadIdx.x;
     int gid = blockIdx.x * blockDim.x + tid;
 
-    cuda::pipeline<cuda::thread_scope_thread> pipe;
+    // CUDA 13 需要显式的 pipeline shared state + 所属 thread block 组
+    __shared__ cuda::pipeline_shared_state<cuda::thread_scope_block, STAGES> pipe_state;
+    auto block = cg::this_thread_block();
+    auto pipe = cuda::make_pipeline(block, &pipe_state);
     float acc = 0.f;
 
 #pragma unroll
     for (int s = 0; s < STAGES; ++s) {
         pipe.producer_acquire();
         cuda::memcpy_async(
+            block,
             &smem[s * blockDim.x + tid],
             &in[gid + s * blockDim.x],
             sizeof(float),
