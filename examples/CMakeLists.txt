@@ -54,11 +54,18 @@ macro(create_cuda_example target_name source_file)
     endif()
 
     # 添加编译器选项 (行号信息用于 Nsight 分析)
-    # 抑制 Windows 下的字符编码警告（C4819 和 Unicode 相关警告）
-    target_compile_options(${target_name} PRIVATE
-            $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo -Xptxas=-v -Xcompiler=/wd4819>
-            $<$<COMPILE_LANGUAGE:CXX>:/wd4819>
-    )
+    if(WIN32)
+        # Windows: 抑制字符编码相关警告（C4819 等），通过 MSVC 风格的 /wd4819
+        target_compile_options(${target_name} PRIVATE
+                $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo -Xptxas=-v -Xcompiler=/wd4819>
+                $<$<COMPILE_LANGUAGE:CXX>:/wd4819>
+        )
+    else()
+        # Linux/macOS: 不使用 /wd4819，避免被 gcc/clang 当成“额外输入文件”
+        target_compile_options(${target_name} PRIVATE
+                $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo -Xptxas=-v>
+        )
+    endif()
 
     message(STATUS "[Example] Added target: ${target_name}")
 endmacro()
