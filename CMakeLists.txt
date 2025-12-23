@@ -74,7 +74,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/CMakeLists.txt")
-    option(BUILD_BENCHMARKS "Build benchmarks" OFF)
+    option(BUILD_BENCHMARKS "Build benchmarks" ON)
     if(BUILD_BENCHMARKS)
         add_subdirectory(benchmarks)
     endif()
