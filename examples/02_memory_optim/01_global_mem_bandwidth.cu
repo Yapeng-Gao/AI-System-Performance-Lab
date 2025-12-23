@@ -185,8 +185,25 @@ int main() {
                "4. Async Copy", BYTES*2);
 
     // 5. 缓存层：L2 Persistence
-    size_t l2_data_size = 20 * 1024 * 1024; // 20MB < L2 Size
-    int repeats = 50;
+    // 根据不同设备的 L2 大小自适应选择测试数据规模：
+    // - 目标：数据略小于 L2，从而让“权重”有机会完全常驻 L2
+    // - 同时限制上限，避免在小显存设备上分配过大缓冲区
+    size_t l2_bytes = static_cast<size_t>(prop.l2CacheSize);
+    size_t l2_data_size;
+    if (l2_bytes > 0) {
+        // 取 L2 大小的 3/4，避免把 L2 完全填满，给其他元数据留一点空间
+        l2_data_size = static_cast<size_t>(l2_bytes * 3 / 4);
+        // 不超过我们整体分配的测试 buffer 大小
+        if (l2_data_size > BYTES) l2_data_size = BYTES;
+    } else {
+        // 某些老架构可能没有填充 l2CacheSize 字段，退回到保守的 20MB
+        l2_data_size = 20 * 1024 * 1024;
+    }
+    // 向下对齐到 float 边界
+    l2_data_size = (l2_data_size / sizeof(float)) * sizeof(float);
+
+    // 根据设备规模自适应重复次数：更大的 GPU 给更多重复次数，放大差异
+    int repeats = (prop.multiProcessorCount >= 80) ? 100 : 50;
     cudaStream_t s; cudaStreamCreate(&s);
 
     // 5.1 默认 LRU
