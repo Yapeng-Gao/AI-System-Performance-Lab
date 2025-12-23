@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <map>
 #include <cstdio>
+#include <cstdint>      // for uint32_t
 #include <cuda_runtime.h>
 
 // --- 1. 生产级错误检查宏 ---
