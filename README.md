@@ -84,6 +84,14 @@ cmake --build . --parallel 8
 | **Module D** | `src/kernels/cuda/math` | Tensor Core (WGMMA), FP8 |
 | **Module E** | `python/aspl/triton_kernels` | vLLM PagedAttention, Triton |
 
+## 📌 专栏规划文档（本仓库主线）
+
+- `docs/CUDA专栏规划.md`
+- `docs/昇腾CANN专栏规划.md`
+- `docs/异构计算与生态迁移专栏规划.md`
+- `docs/硬核进阶专栏规划.md`
+- `docs/专家进阶专栏规划.md`
+
 ## 🤝 贡献指南
 
 1.  Fork 本仓库
