@@ -370,14 +370,30 @@ __global__ __launch_bounds__(256) void safer_kernel(...) { /* 同上逻辑 */ }
 
 ### 你需要关注的证据链（强烈建议至少做到前两项）
 
-1. **编译证据**：`-Xptxas=-v` 的输出（`Used XX registers` / `spill stores` / `spill loads`）
+1. **编译证据**：`-Xptxas=-v` 的输出（`Used XX registers` / `spill stores` / `spill loads` / `stack frame`）
 2. **运行证据**：同一输入下的 kernel 平均耗时（CUDA Event）
 3. **可选（更强证据）**：Nsight Compute 中 local memory 相关统计项是否显著上升（用于确认 S2/S3 风险）
 
 ### 预期现象（不强行承诺数值，但承诺“对比方法”）
 
 - 如果 Variant B 明显变慢，同时 `spill loads/stores` 非 0，通常意味着你击中了 spilling（且大概率落在热路径）。
+- **如果 `spill loads/stores = 0` 但 `stack frame` 很大**，同样要警惕：这往往意味着线程私有状态被放到了 local/stack 路径上（仍然可能显著变慢）。所以这里的“判定”应以**时间断崖 + ptxas 证据组合**为准，而不是只盯着 spill 字段。
 - 如果 Variant C 改变了 `reg` 或 `spill`，说明 `__launch_bounds__` 确实在影响编译器的资源分配决策（它是契约，不是免费午餐）。
+
+#### 示例结果（不同设备会不同，重点看“对比方法”）
+
+以下示例以 `sm_120`（例如 RTX 5090 一类架构）为编译目标，参数为 `N=1048576`、`inner_iters=256`：
+
+```
+[A] baseline (REGS=32)    : 4.6272 ms
+[B] high-reg (REGS=256)   : 16.4192 ms
+[C] launch_bounds (2 blks): 16.4200 ms
+```
+
+解读要点：
+
+- B 相比 A 约 **3.55×** 变慢，说明“线程私有状态膨胀”确实可能造成断崖式回退。
+- 如果你看到 `ptxas` 输出中 `spill loads/stores` 为 0，但 `stack frame` 很大（例如 1024 bytes），这依然是一个强烈信号：热路径可能走到了 local/stack 相关访问上。
 
 > [💻 代码占位符：参见项目 `examples/02_memory_optim/03_register_spill.cu`]
 
