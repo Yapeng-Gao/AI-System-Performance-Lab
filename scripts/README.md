@@ -6,6 +6,7 @@
 
 - `dump_sass.sh`        ：为 benchmarks 下的核心基准生成 cubin + SASS（按 sm_80/90/100）
 - `profile_ncu.sh`      ：用 Nsight Compute 采集带宽/算力/指令等指标，输出 CSV 到 `docs/results/ncu`
+- `profile_ncu_l2_residency.sh`：采集示例 `02_memory_optim_04_l2_residency` 的 L2/DRAM 证据三件套（输出 CSV 到 `docs/results/ncu`
 - `parse_roofline.py`   ：解析 NCU CSV，计算带宽 / TFLOPs / OI
 - `plot_roofline.py`    ：根据 JSON + 硬件屋顶线数据绘制 Roofline 图
 

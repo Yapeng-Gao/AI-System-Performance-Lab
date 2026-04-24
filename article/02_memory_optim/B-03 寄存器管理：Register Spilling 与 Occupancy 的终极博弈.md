@@ -24,9 +24,9 @@ GPU 编程中常出现一个反直觉的现象：你为了让逻辑更清晰，�
 ### 1.1 看起来很大，其实很小
 查阅架构资料会发现，从 Ampere (A100) 到 Hopper (H100)，每个 SM 的寄存器文件（Register File, RF）规模通常被概括为：**64K（65,536）个 32‑bit 寄存器**。这看起来十分富裕，但别忘了 GPU 的立身之本是**海量线程并发**。假设我们要在一个 SM 上跑满 2048 个线程（物理上限），平均分摊下来：
 
-\[
+$$
 \text{平均寄存器数} = \frac{65536}{2048} = 32 \text{ Registers/Thread}
-\]
+$$
 
 **32 个寄存器能干什么？**  
 一个双精度浮点数（FP64）就占 2 个寄存器。如果你在写 GEMM，你需要寄存器来保存 A/B 的分块、C 的累加器、各种指针和索引。32 个瞬间捉襟见肘。
@@ -204,15 +204,15 @@ SM 的寄存器总量是固定的。
 #### 2.2.1 核心公式
 寄存器直接限制可驻留 warp 数。工程近似公式：
 
-\[
+$$
 \text{Warps}_{\text{reg}} = \left\lfloor \frac{\text{TotalRegsPerSM}}{\text{RegsPerThread} \times 32} \right\rfloor \tag{1}
-\]
+$$
 
 实际可驻留 warp 数是多种资源的交集：
 
-\[
+$$
 \text{ActiveWarpsPerSM} = \min\left( \text{Warps}_{\text{reg}},\ \left\lfloor\frac{\text{MaxThreadsPerSM}}{32}\right\rfloor,\ \text{Shared Memory 等其他约束} \right) \tag{2}
-\]
+$$
 
 - **TotalRegsPerSM**：该架构每个 SM 的 32‑bit 寄存器总量（工程口径常写作 64K regs）
 - **RegsPerThread**：编译器为每个线程分配的寄存器数（看 `-Xptxas=-v`）
