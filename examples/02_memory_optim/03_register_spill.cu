@@ -34,13 +34,9 @@
 
 // 为了让编译器更难“证明无用并优化掉”，用 volatile + 数据依赖链。
 template <int REGS_PER_THREAD>
-__global__ void reg_pressure_kernel(const float* __restrict__ in,
-                                    float* __restrict__ out,
-                                    int n,
-                                    int iters) {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= n) return;
-
+__device__ __forceinline__ float reg_pressure_body(const float* __restrict__ in,
+                                                   int tid,
+                                                   int iters) {
     // 关键：一个较大的“线程私有数组”会把压力推到寄存器/本地内存决策边界附近。
     // 说明：数组是否放进寄存器由编译器决定；当寄存器不够时会溢出到 local memory。
     volatile float r[REGS_PER_THREAD];
@@ -61,7 +57,18 @@ __global__ void reg_pressure_kernel(const float* __restrict__ in,
         r[j] = acc * 0.0001f + x; // 写回，防止编译器把 r 视为只读常量
     }
 
-    out[tid] = acc;
+    return acc;
+}
+
+template <int REGS_PER_THREAD>
+__global__ void reg_pressure_kernel(const float* __restrict__ in,
+                                    float* __restrict__ out,
+                                    int n,
+                                    int iters) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= n) return;
+
+    out[tid] = reg_pressure_body<REGS_PER_THREAD>(in, tid, iters);
 }
 
 // 同一个 kernel，但用 launch_bounds 给编译器一个“驻留契约”提示（可能会改变寄存器分配/调度）
@@ -71,7 +78,9 @@ void reg_pressure_kernel_lb(const float* __restrict__ in,
                             float* __restrict__ out,
                             int n,
                             int iters) {
-    reg_pressure_kernel<REGS_PER_THREAD>(in, out, n, iters);
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= n) return;
+    out[tid] = reg_pressure_body<REGS_PER_THREAD>(in, tid, iters);
 }
 
 template <class LaunchFn>
