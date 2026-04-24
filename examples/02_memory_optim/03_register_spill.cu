@@ -74,7 +74,8 @@ void reg_pressure_kernel_lb(const float* __restrict__ in,
     reg_pressure_kernel<REGS_PER_THREAD>(in, out, n, iters);
 }
 
-static float time_kernel(void (*launch)(cudaStream_t), int warmup, int iters) {
+template <class LaunchFn>
+static float time_kernel(LaunchFn launch, int warmup, int iters) {
     cudaStream_t stream;
     CUDA_CHECK(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
 
@@ -137,18 +138,9 @@ int main(int argc, char** argv) {
         reg_pressure_kernel_lb<256, 256, 2><<<grid, block, 0, stream>>>(d_in, d_out, n, inner_iters);
     };
 
-    float ms_a = time_kernel(
-        [&](cudaStream_t s) { launch_a(s); },
-        warmup, repeat
-    );
-    float ms_b = time_kernel(
-        [&](cudaStream_t s) { launch_b(s); },
-        warmup, repeat
-    );
-    float ms_c = time_kernel(
-        [&](cudaStream_t s) { launch_c(s); },
-        warmup, repeat
-    );
+    float ms_a = time_kernel([&](cudaStream_t s) { launch_a(s); }, warmup, repeat);
+    float ms_b = time_kernel([&](cudaStream_t s) { launch_b(s); }, warmup, repeat);
+    float ms_c = time_kernel([&](cudaStream_t s) { launch_c(s); }, warmup, repeat);
 
     CUDA_CHECK(cudaDeviceSynchronize());
 
