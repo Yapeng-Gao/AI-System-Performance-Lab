@@ -88,13 +88,37 @@ __global__ void streaming_kernel(const float* __restrict__ in,
                                  int iters) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  float acc = 0.0f;
+
+  // 用多条独立累加链打断单链 RAW 依赖，提升 ILP，减少 scoreboard 等待。
+  float acc0 = 0.0f;
+  float acc1 = 0.0f;
+  float acc2 = 0.0f;
+  float acc3 = 0.0f;
+
   for (int r = 0; r < iters; ++r) {
-    for (int i = tid; i < n; i += stride) {
+    int i = tid;
+
+    // 手工展开 4x：每轮消费 4 个 stride 位置，增加并行可发射机会。
+    for (; i + 3 * stride < n; i += 4 * stride) {
+      float x0 = in[i];
+      float x1 = in[i + stride];
+      float x2 = in[i + 2 * stride];
+      float x3 = in[i + 3 * stride];
+
+      acc0 = fmaf(x0, 1.000001f, acc0);
+      acc1 = fmaf(x1, 1.000001f, acc1);
+      acc2 = fmaf(x2, 1.000001f, acc2);
+      acc3 = fmaf(x3, 1.000001f, acc3);
+    }
+
+    // 处理尾项
+    for (; i < n; i += stride) {
       float x = in[i];
-      acc = fmaf(x, 1.000001f, acc);
+      acc0 = fmaf(x, 1.000001f, acc0);
     }
   }
+
+  float acc = (acc0 + acc1) + (acc2 + acc3);
   if (tid < n) out[tid] = acc;
 }
 
