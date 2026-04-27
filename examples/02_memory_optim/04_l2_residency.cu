@@ -22,6 +22,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
+#include <numeric>
 
 #define CUDA_CHECK(call) \
   do { \
@@ -188,11 +189,25 @@ static int next_pow2(int x) {
   return p;
 }
 
+static float mean_of(const std::vector<float>& v) {
+  if (v.empty()) return 0.0f;
+  float sum = std::accumulate(v.begin(), v.end(), 0.0f);
+  return sum / float(v.size());
+}
+
+static float median_of(std::vector<float> v) {
+  if (v.empty()) return 0.0f;
+  std::sort(v.begin(), v.end());
+  const size_t n = v.size();
+  if (n % 2 == 1) return v[n / 2];
+  return 0.5f * (v[n / 2 - 1] + v[n / 2]);
+}
+
 static void print_usage(const char* prog) {
   std::printf(
       "Usage:\n"
       "  %s [data_mb iters set_aside_mb window_mb hit_ratio]\n"
-      "  %s [--data-mb M] [--iters N] [--set-aside-mb M] [--window-mb M] [--hit-ratio R] [--seed U] [--csv-only]\n"
+      "  %s [--data-mb M] [--iters N] [--set-aside-mb M] [--window-mb M] [--hit-ratio R] [--hot-ratio R] [--runs N] [--seed U] [--csv-only]\n"
       "\n"
       "Args:\n"
       "  data_mb / --data-mb             Total input size in MB (default: 64)\n"
@@ -200,6 +215,8 @@ static void print_usage(const char* prog) {
       "  set_aside_mb / --set-aside-mb   L2 persisting set-aside size in MB (default: 8)\n"
       "  window_mb / --window-mb         Access policy window size in MB (default: 32)\n"
       "  hit_ratio / --hit-ratio         Access policy hitRatio in [0,1] (default: 0.25)\n"
+      "  --hot-ratio                     Hot subset ratio in [0,1] for mixed workload (default: 0.25)\n"
+      "  --runs                          Number of repeated runs for robust stats (default: 1)\n"
       "  --seed                          RNG seed for mixed workloads (default: 12345)\n"
       "  --csv-only                      Print CSV line only (for batch runs)\n",
       prog, prog);
@@ -215,8 +232,10 @@ int main(int argc, char** argv) {
   double set_aside_mb = 8.0;
   double window_mb = 32.0;
   float hit_ratio = 0.25f;
+  float hot_ratio = 0.25f;
   int warmup = 3;
   int repeats = 20;
+  int runs = 1;
   unsigned seed_base = 12345u;
   bool csv_only = false;
 
@@ -244,6 +263,10 @@ int main(int argc, char** argv) {
         window_mb = std::atof(argv[++i]);
       } else if (std::strcmp(argv[i], "--hit-ratio") == 0 && i + 1 < argc) {
         hit_ratio = (float)std::atof(argv[++i]);
+      } else if (std::strcmp(argv[i], "--hot-ratio") == 0 && i + 1 < argc) {
+        hot_ratio = (float)std::atof(argv[++i]);
+      } else if (std::strcmp(argv[i], "--runs") == 0 && i + 1 < argc) {
+        runs = std::atoi(argv[++i]);
       } else if (std::strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
         seed_base = (unsigned)std::strtoul(argv[++i], nullptr, 10);
       } else if (std::strcmp(argv[i], "--csv-only") == 0) {
@@ -263,6 +286,8 @@ int main(int argc, char** argv) {
   }
 
   hit_ratio = std::min(1.0f, std::max(0.0f, hit_ratio));
+  hot_ratio = std::min(1.0f, std::max(0.0f, hot_ratio));
+  runs = std::max(1, runs);
 
   cudaDeviceProp prop{};
   CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
@@ -278,8 +303,8 @@ int main(int argc, char** argv) {
     std::printf("=== [Module B] B-04 L2 Residency Control (CUDA 13 / compat 12) ===\n");
     std::printf("GPU: %s\n", prop.name);
     std::printf("data_mb=%.2f (n=%d floats), iters=%d\n", data_mb, n, iters);
-    std::printf("set_aside_mb=%.2f, window_mb=%.2f, hit_ratio=%.3f, seed=%u\n",
-                set_aside_mb, window_mb, hit_ratio, seed_base);
+    std::printf("set_aside_mb=%.2f, window_mb=%.2f, hit_ratio=%.3f, hot_ratio=%.3f, runs=%d, seed=%u\n",
+                set_aside_mb, window_mb, hit_ratio, hot_ratio, runs, seed_base);
     std::printf("device limits: persistingL2CacheMaxSize=%.2f MB, accessPolicyMaxWindowSize=%.2f MB\n",
                 prop.persistingL2CacheMaxSize / (1024.0 * 1024.0),
                 prop.accessPolicyMaxWindowSize / (1024.0 * 1024.0));
@@ -341,52 +366,97 @@ int main(int argc, char** argv) {
   double effective_window_mb = (double)window_bytes / (1024.0 * 1024.0);
   int window_n = (int)(window_bytes / sizeof(float));
   window_n = std::max(1, window_n);
-  int hot_subset_n = (int)std::max(1.0, (double)window_n * (double)hit_ratio);
+  int hot_subset_n = (int)std::max(1.0, (double)window_n * (double)hot_ratio);
 
-  auto launch_mixed_baseline = [&](cudaStream_t s) {
-    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17, seed_base);
-    CUDA_CHECK(cudaGetLastError());
-  };
-  disable_access_policy_window(stream);
-  reset_persisting_l2();
-  float ms_mixed_base = time_kernel([&](cudaStream_t s) { launch_mixed_baseline(s); }, warmup, repeats, stream);
+  std::vector<float> stream_runs, hot_runs, c0_runs, c1_runs, d_runs;
+  stream_runs.reserve((size_t)runs);
+  hot_runs.reserve((size_t)runs);
+  c0_runs.reserve((size_t)runs);
+  c1_runs.reserve((size_t)runs);
+  d_runs.reserve((size_t)runs);
 
-  set_persisting_l2_bytes(set_aside_bytes);
-  set_access_policy_window(stream, d_in, window_bytes, hit_ratio);
-  reset_persisting_l2();
-  auto launch_residency = [&](cudaStream_t s) {
-    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17, seed_base);
-    CUDA_CHECK(cudaGetLastError());
-  };
-  float ms_res = time_kernel([&](cudaStream_t s) { launch_residency(s); }, warmup, repeats, stream);
+  for (int run = 0; run < runs; ++run) {
+    auto launch_mixed_baseline = [&](cudaStream_t s) {
+      mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17, seed_base + (unsigned)run);
+      CUDA_CHECK(cudaGetLastError());
+    };
+    auto launch_residency = [&](cudaStream_t s) {
+      mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17, seed_base + (unsigned)run);
+      CUDA_CHECK(cudaGetLastError());
+    };
+    auto launch_thrash = [&](cudaStream_t s) {
+      mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 97, seed_base + (unsigned)run);
+      CUDA_CHECK(cudaGetLastError());
+    };
 
-  // 4) Thrashing：window >> set-aside + hitRatio=1.0（policy on）
-  // 这里用同一 window，但把 hitRatio 强行设为 1.0，并加强 cold_stride 增加替换压力
-  set_persisting_l2_bytes(set_aside_bytes);
-  set_access_policy_window(stream, d_in, window_bytes, 1.0f);
-  reset_persisting_l2();
-  auto launch_thrash = [&](cudaStream_t s) {
-    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 97, seed_base);
-    CUDA_CHECK(cudaGetLastError());
-  };
-  float ms_thr = time_kernel([&](cudaStream_t s) { launch_thrash(s); }, warmup, repeats, stream);
+    // 1) Streaming baseline（policy off）
+    disable_access_policy_window(stream);
+    reset_persisting_l2();
+    auto launch_stream = [&](cudaStream_t s) {
+      streaming_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters);
+      CUDA_CHECK(cudaGetLastError());
+    };
+    stream_runs.push_back(time_kernel([&](cudaStream_t s) { launch_stream(s); }, warmup, repeats, stream));
+
+    // 2) Hot reuse baseline（policy off）
+    disable_access_policy_window(stream);
+    reset_persisting_l2();
+    auto launch_hot = [&](cudaStream_t s) {
+      hot_reuse_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, hot_mask);
+      CUDA_CHECK(cudaGetLastError());
+    };
+    hot_runs.push_back(time_kernel([&](cudaStream_t s) { launch_hot(s); }, warmup, repeats, stream));
+
+    // 3) Mixed baseline（policy off）
+    disable_access_policy_window(stream);
+    reset_persisting_l2();
+    c0_runs.push_back(time_kernel([&](cudaStream_t s) { launch_mixed_baseline(s); }, warmup, repeats, stream));
+
+    // 4) Residency（policy on）
+    set_persisting_l2_bytes(set_aside_bytes);
+    set_access_policy_window(stream, d_in, window_bytes, hit_ratio);
+    reset_persisting_l2();
+    c1_runs.push_back(time_kernel([&](cudaStream_t s) { launch_residency(s); }, warmup, repeats, stream));
+
+    // 5) Thrashing（policy on）
+    set_persisting_l2_bytes(set_aside_bytes);
+    set_access_policy_window(stream, d_in, window_bytes, 1.0f);
+    reset_persisting_l2();
+    d_runs.push_back(time_kernel([&](cudaStream_t s) { launch_thrash(s); }, warmup, repeats, stream));
+  }
+
+  const float ms_stream = median_of(stream_runs);
+  const float ms_hot = median_of(hot_runs);
+  const float ms_mixed_base = median_of(c0_runs);
+  const float ms_res = median_of(c1_runs);
+  const float ms_thr = median_of(d_runs);
+  const float mean_stream = mean_of(stream_runs);
+  const float mean_hot = mean_of(hot_runs);
+  const float mean_c0 = mean_of(c0_runs);
+  const float mean_c1 = mean_of(c1_runs);
+  const float mean_d = mean_of(d_runs);
 
   CUDA_CHECK(cudaStreamSynchronize(stream));
   CUDA_CHECK(cudaGetLastError());
 
   if (csv_only) {
-    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,mixed_base=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
-                ms_stream, ms_hot, ms_mixed_base, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
+    std::printf("CSV,time_ms,stream_med=%.4f,hot_med=%.4f,mixed_base_med=%.4f,residency_med=%.4f,thrashing_med=%.4f,stream_mean=%.4f,hot_mean=%.4f,mixed_base_mean=%.4f,residency_mean=%.4f,thrashing_mean=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,hot_ratio=%.3f,runs=%d,seed=%u\n",
+                ms_stream, ms_hot, ms_mixed_base, ms_res, ms_thr,
+                mean_stream, mean_hot, mean_c0, mean_c1, mean_d,
+                data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, hot_ratio, runs, seed_base);
   } else {
-    std::printf("[A] Streaming (policy off)  : %.4f ms\n", ms_stream);
-    std::printf("[B] Hot reuse (policy off)  : %.4f ms\n", ms_hot);
+    std::printf("[A] Streaming (policy off)  : median=%.4f ms, mean=%.4f ms\n", ms_stream, mean_stream);
+    std::printf("[B] Hot reuse (policy off)  : median=%.4f ms, mean=%.4f ms\n", ms_hot, mean_hot);
     std::printf("[C0] Mixed baseline (off)   : %.4f ms  (window=%.2fMB, hotRatio=%.3f)\n",
-                ms_mixed_base, effective_window_mb, hit_ratio);
+                ms_mixed_base, effective_window_mb, hot_ratio);
     std::printf("[C1] Mixed + residency (on) : %.4f ms  (set-aside=%.2fMB, window=%.2fMB, hitRatio=%.3f)\n",
                 ms_res, effective_set_aside_mb, effective_window_mb, hit_ratio);
     std::printf("[D] Thrashing (policy on)   : %.4f ms  (hitRatio forced 1.0)\n", ms_thr);
-    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,mixed_base=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
-                ms_stream, ms_hot, ms_mixed_base, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
+    std::printf("  (mean) C0=%.4f ms, C1=%.4f ms, D=%.4f ms, runs=%d\n", mean_c0, mean_c1, mean_d, runs);
+    std::printf("CSV,time_ms,stream_med=%.4f,hot_med=%.4f,mixed_base_med=%.4f,residency_med=%.4f,thrashing_med=%.4f,stream_mean=%.4f,hot_mean=%.4f,mixed_base_mean=%.4f,residency_mean=%.4f,thrashing_mean=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,hot_ratio=%.3f,runs=%d,seed=%u\n",
+                ms_stream, ms_hot, ms_mixed_base, ms_res, ms_thr,
+                mean_stream, mean_hot, mean_c0, mean_c1, mean_d,
+                data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, hot_ratio, runs, seed_base);
     std::printf("\nInterpretation:\n");
     std::printf("- [A] 是纯 streaming：通常 DRAM bytes 高，L2 hit 低；policy 很难带来稳定收益。\n");
     std::printf("- [B] 有复用：如果工作集贴近/小于 L2，L2 hit 会明显抬升，时间下降。\n");
