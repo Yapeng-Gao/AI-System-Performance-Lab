@@ -331,7 +331,7 @@ int main(int argc, char** argv) {
   };
   float ms_hot = time_kernel([&](cudaStream_t s) { launch_hot(s); }, warmup, repeats, stream);
 
-  // 3) Residency：set-aside + window + hitRatio（policy on）
+  // 3) Mixed baseline / Residency：同一 workload，分别 policy off / on
   // window 默认限定在 data 范围内；hot_n 取 window 的子集用于“热点访问更频繁”
   size_t set_aside_bytes = mb_to_bytes(set_aside_mb);
   set_aside_bytes = std::min(set_aside_bytes, (size_t)prop.persistingL2CacheMaxSize);
@@ -342,6 +342,14 @@ int main(int argc, char** argv) {
   int window_n = (int)(window_bytes / sizeof(float));
   window_n = std::max(1, window_n);
   int hot_subset_n = (int)std::max(1.0, (double)window_n * (double)hit_ratio);
+
+  auto launch_mixed_baseline = [&](cudaStream_t s) {
+    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17, seed_base);
+    CUDA_CHECK(cudaGetLastError());
+  };
+  disable_access_policy_window(stream);
+  reset_persisting_l2();
+  float ms_mixed_base = time_kernel([&](cudaStream_t s) { launch_mixed_baseline(s); }, warmup, repeats, stream);
 
   set_persisting_l2_bytes(set_aside_bytes);
   set_access_policy_window(stream, d_in, window_bytes, hit_ratio);
@@ -367,21 +375,28 @@ int main(int argc, char** argv) {
   CUDA_CHECK(cudaGetLastError());
 
   if (csv_only) {
-    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
-                ms_stream, ms_hot, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
+    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,mixed_base=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
+                ms_stream, ms_hot, ms_mixed_base, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
   } else {
     std::printf("[A] Streaming (policy off)  : %.4f ms\n", ms_stream);
     std::printf("[B] Hot reuse (policy off)  : %.4f ms\n", ms_hot);
-    std::printf("[C] Residency (policy on)   : %.4f ms  (set-aside=%.2fMB, window=%.2fMB, hitRatio=%.3f)\n",
+    std::printf("[C0] Mixed baseline (off)   : %.4f ms  (window=%.2fMB, hotRatio=%.3f)\n",
+                ms_mixed_base, effective_window_mb, hit_ratio);
+    std::printf("[C1] Mixed + residency (on) : %.4f ms  (set-aside=%.2fMB, window=%.2fMB, hitRatio=%.3f)\n",
                 ms_res, effective_set_aside_mb, effective_window_mb, hit_ratio);
     std::printf("[D] Thrashing (policy on)   : %.4f ms  (hitRatio forced 1.0)\n", ms_thr);
-    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
-                ms_stream, ms_hot, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
+    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,mixed_base=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
+                ms_stream, ms_hot, ms_mixed_base, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
     std::printf("\nInterpretation:\n");
     std::printf("- [A] 是纯 streaming：通常 DRAM bytes 高，L2 hit 低；policy 很难带来稳定收益。\n");
     std::printf("- [B] 有复用：如果工作集贴近/小于 L2，L2 hit 会明显抬升，时间下降。\n");
-    std::printf("- [C] 是“窗口大于 set-aside 的可控版本”：合理 hitRatio 可能让热点子集更稳。\n");
-    std::printf("- [D] 是经典 thrashing 配置：window >> set-aside 且 hitRatio=1.0 时，可能出现不升反降。\n");
+    std::printf("- [C1] 与 [C0] 是同一 workload 的公平对照：用它判断 residency 是否真正带来收益。\n");
+    if (effective_window_mb > effective_set_aside_mb) {
+      std::printf("- 当前属于 window > set-aside：更依赖 hitRatio 管控，配置不当时收益容易被稀释。\n");
+    } else {
+      std::printf("- 当前属于 window <= set-aside：这是更容易出现正收益的配置区间。\n");
+    }
+    std::printf("- [D] 是更激进的替换压力场景：若 [D] 慢于 [C1]，说明 hitRatio=1.0 可能过于乐观。\n");
     std::printf("\nNCU 建议（示例）：\n");
     std::printf("  ncu --set full --metrics gpu__time_duration.sum,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_sectors_hit_rate.pct --target-processes all ./bin/02_memory_optim_04_l2_residency\n");
   }
