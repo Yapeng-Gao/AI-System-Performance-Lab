@@ -1,5 +1,5 @@
 /**
- * [Module B] 14. L2 Cache 行为与 Residency：Access Policy / Persisting vs Streaming
+ * [Module B] B-04. L2 Cache 行为与 Residency：Access Policy / Persisting vs Streaming
  *
  * 目标（工程闭环）：
  * - 用最小 micro-bench 复现三类典型场景：
@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <vector>
 #include <algorithm>
+#include <cstring>
 
 #define CUDA_CHECK(call) \
   do { \
@@ -125,11 +126,12 @@ __global__ void mixed_window_kernel(const float* __restrict__ in,
                                    int iters,
                                    int window_n,
                                    int hot_n,
-                                   int cold_stride) {
+                                   int cold_stride,
+                                   unsigned seed_base) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid >= n) return;
 
-  unsigned seed = (unsigned)tid * 1664525u + 1013904223u;
+  unsigned seed = ((unsigned)tid ^ seed_base) * 1664525u + 1013904223u;
   float acc = 0.0f;
 
   // 约 3:1 热/冷访问比例（不追求精确，追求“复用 + 压力”共存）
@@ -186,6 +188,23 @@ static int next_pow2(int x) {
   return p;
 }
 
+static void print_usage(const char* prog) {
+  std::printf(
+      "Usage:\n"
+      "  %s [data_mb iters set_aside_mb window_mb hit_ratio]\n"
+      "  %s [--data-mb M] [--iters N] [--set-aside-mb M] [--window-mb M] [--hit-ratio R] [--seed U] [--csv-only]\n"
+      "\n"
+      "Args:\n"
+      "  data_mb / --data-mb             Total input size in MB (default: 64)\n"
+      "  iters / --iters                 Loop count per thread (default: 2048)\n"
+      "  set_aside_mb / --set-aside-mb   L2 persisting set-aside size in MB (default: 8)\n"
+      "  window_mb / --window-mb         Access policy window size in MB (default: 32)\n"
+      "  hit_ratio / --hit-ratio         Access policy hitRatio in [0,1] (default: 0.25)\n"
+      "  --seed                          RNG seed for mixed workloads (default: 12345)\n"
+      "  --csv-only                      Print CSV line only (for batch runs)\n",
+      prog, prog);
+}
+
 int main(int argc, char** argv) {
   // 参数（尽量给出能“默认跑通”的配置）
   // data_mb: 工作集大小（MB）
@@ -198,12 +217,50 @@ int main(int argc, char** argv) {
   float hit_ratio = 0.25f;
   int warmup = 3;
   int repeats = 20;
+  unsigned seed_base = 12345u;
+  bool csv_only = false;
 
-  if (argc >= 2) data_mb = std::atof(argv[1]);
-  if (argc >= 3) iters = std::atoi(argv[2]);
-  if (argc >= 4) set_aside_mb = std::atof(argv[3]);
-  if (argc >= 5) window_mb = std::atof(argv[4]);
-  if (argc >= 6) hit_ratio = (float)std::atof(argv[5]);
+  bool has_named_args = false;
+  for (int i = 1; i < argc; ++i) {
+    if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+      print_usage(argv[0]);
+      return 0;
+    }
+    if (std::strncmp(argv[i], "--", 2) == 0) {
+      has_named_args = true;
+      break;
+    }
+  }
+
+  if (has_named_args) {
+    for (int i = 1; i < argc; ++i) {
+      if (std::strcmp(argv[i], "--data-mb") == 0 && i + 1 < argc) {
+        data_mb = std::atof(argv[++i]);
+      } else if (std::strcmp(argv[i], "--iters") == 0 && i + 1 < argc) {
+        iters = std::atoi(argv[++i]);
+      } else if (std::strcmp(argv[i], "--set-aside-mb") == 0 && i + 1 < argc) {
+        set_aside_mb = std::atof(argv[++i]);
+      } else if (std::strcmp(argv[i], "--window-mb") == 0 && i + 1 < argc) {
+        window_mb = std::atof(argv[++i]);
+      } else if (std::strcmp(argv[i], "--hit-ratio") == 0 && i + 1 < argc) {
+        hit_ratio = (float)std::atof(argv[++i]);
+      } else if (std::strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+        seed_base = (unsigned)std::strtoul(argv[++i], nullptr, 10);
+      } else if (std::strcmp(argv[i], "--csv-only") == 0) {
+        csv_only = true;
+      } else {
+        std::fprintf(stderr, "Unknown or incomplete argument: %s\n\n", argv[i]);
+        print_usage(argv[0]);
+        return 1;
+      }
+    }
+  } else {
+    if (argc >= 2) data_mb = std::atof(argv[1]);
+    if (argc >= 3) iters = std::atoi(argv[2]);
+    if (argc >= 4) set_aside_mb = std::atof(argv[3]);
+    if (argc >= 5) window_mb = std::atof(argv[4]);
+    if (argc >= 6) hit_ratio = (float)std::atof(argv[5]);
+  }
 
   hit_ratio = std::min(1.0f, std::max(0.0f, hit_ratio));
 
@@ -217,14 +274,17 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::printf("=== [Module B] 14. L2 Residency Control (CUDA 13 / compat 12) ===\n");
-  std::printf("GPU: %s\n", prop.name);
-  std::printf("data_mb=%.2f (n=%d floats), iters=%d\n", data_mb, n, iters);
-  std::printf("set_aside_mb=%.2f, window_mb=%.2f, hit_ratio=%.3f\n", set_aside_mb, window_mb, hit_ratio);
-  std::printf("device limits: persistingL2CacheMaxSize=%.2f MB, accessPolicyMaxWindowSize=%.2f MB\n",
-              prop.persistingL2CacheMaxSize / (1024.0 * 1024.0),
-              prop.accessPolicyMaxWindowSize / (1024.0 * 1024.0));
-  std::printf("Tip: use NCU to check DRAM bytes + L2 hit. Example in article B-04.\n\n");
+  if (!csv_only) {
+    std::printf("=== [Module B] B-04 L2 Residency Control (CUDA 13 / compat 12) ===\n");
+    std::printf("GPU: %s\n", prop.name);
+    std::printf("data_mb=%.2f (n=%d floats), iters=%d\n", data_mb, n, iters);
+    std::printf("set_aside_mb=%.2f, window_mb=%.2f, hit_ratio=%.3f, seed=%u\n",
+                set_aside_mb, window_mb, hit_ratio, seed_base);
+    std::printf("device limits: persistingL2CacheMaxSize=%.2f MB, accessPolicyMaxWindowSize=%.2f MB\n",
+                prop.persistingL2CacheMaxSize / (1024.0 * 1024.0),
+                prop.accessPolicyMaxWindowSize / (1024.0 * 1024.0));
+    std::printf("Tip: use NCU to check DRAM bytes + L2 hit. Example in article B-04.\n\n");
+  }
 
   std::vector<float> h_in(n);
   for (int i = 0; i < n; ++i) h_in[i] = float((i * 131) % 1024) * 0.001f;
@@ -245,7 +305,8 @@ int main(int argc, char** argv) {
   disable_access_policy_window(stream);
   reset_persisting_l2();
   auto launch_stream = [&](cudaStream_t s) {
-    streaming_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, /*iters*/ 1);
+    streaming_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters);
+    CUDA_CHECK(cudaGetLastError());
   };
   float ms_stream = time_kernel([&](cudaStream_t s) { launch_stream(s); }, warmup, repeats, stream);
 
@@ -266,13 +327,18 @@ int main(int argc, char** argv) {
   reset_persisting_l2();
   auto launch_hot = [&](cudaStream_t s) {
     hot_reuse_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, hot_mask);
+    CUDA_CHECK(cudaGetLastError());
   };
   float ms_hot = time_kernel([&](cudaStream_t s) { launch_hot(s); }, warmup, repeats, stream);
 
   // 3) Residency：set-aside + window + hitRatio（policy on）
   // window 默认限定在 data 范围内；hot_n 取 window 的子集用于“热点访问更频繁”
   size_t set_aside_bytes = mb_to_bytes(set_aside_mb);
+  set_aside_bytes = std::min(set_aside_bytes, (size_t)prop.persistingL2CacheMaxSize);
+  double effective_set_aside_mb = (double)set_aside_bytes / (1024.0 * 1024.0);
   size_t window_bytes = std::min(mb_to_bytes(window_mb), bytes);
+  window_bytes = std::min(window_bytes, (size_t)prop.accessPolicyMaxWindowSize);
+  double effective_window_mb = (double)window_bytes / (1024.0 * 1024.0);
   int window_n = (int)(window_bytes / sizeof(float));
   window_n = std::max(1, window_n);
   int hot_subset_n = (int)std::max(1.0, (double)window_n * (double)hit_ratio);
@@ -281,7 +347,8 @@ int main(int argc, char** argv) {
   set_access_policy_window(stream, d_in, window_bytes, hit_ratio);
   reset_persisting_l2();
   auto launch_residency = [&](cudaStream_t s) {
-    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17);
+    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 17, seed_base);
+    CUDA_CHECK(cudaGetLastError());
   };
   float ms_res = time_kernel([&](cudaStream_t s) { launch_residency(s); }, warmup, repeats, stream);
 
@@ -291,25 +358,33 @@ int main(int argc, char** argv) {
   set_access_policy_window(stream, d_in, window_bytes, 1.0f);
   reset_persisting_l2();
   auto launch_thrash = [&](cudaStream_t s) {
-    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 97);
+    mixed_window_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, window_n, hot_subset_n, /*cold_stride*/ 97, seed_base);
+    CUDA_CHECK(cudaGetLastError());
   };
   float ms_thr = time_kernel([&](cudaStream_t s) { launch_thrash(s); }, warmup, repeats, stream);
 
   CUDA_CHECK(cudaStreamSynchronize(stream));
   CUDA_CHECK(cudaGetLastError());
 
-  std::printf("[A] Streaming (policy off)  : %.4f ms\n", ms_stream);
-  std::printf("[B] Hot reuse (policy off)  : %.4f ms\n", ms_hot);
-  std::printf("[C] Residency (policy on)   : %.4f ms  (set-aside=%.2fMB, window=%.2fMB, hitRatio=%.3f)\n",
-              ms_res, set_aside_mb, window_mb, hit_ratio);
-  std::printf("[D] Thrashing (policy on)   : %.4f ms  (hitRatio forced 1.0)\n", ms_thr);
-  std::printf("\nInterpretation:\n");
-  std::printf("- [A] 是纯 streaming：通常 DRAM bytes 高，L2 hit 低；policy 很难带来稳定收益。\n");
-  std::printf("- [B] 有复用：如果工作集贴近/小于 L2，L2 hit 会明显抬升，时间下降。\n");
-  std::printf("- [C] 是“窗口大于 set-aside 的可控版本”：合理 hitRatio 可能让热点子集更稳。\n");
-  std::printf("- [D] 是经典 thrashing 配置：window >> set-aside 且 hitRatio=1.0 时，可能出现不升反降。\n");
-  std::printf("\nNCU 建议（示例）：\n");
-  std::printf("  ncu --set full --metrics gpu__time_duration.sum,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_sectors_hit_rate.pct --target-processes all ./bin/02_memory_optim_04_l2_residency\n");
+  if (csv_only) {
+    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
+                ms_stream, ms_hot, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
+  } else {
+    std::printf("[A] Streaming (policy off)  : %.4f ms\n", ms_stream);
+    std::printf("[B] Hot reuse (policy off)  : %.4f ms\n", ms_hot);
+    std::printf("[C] Residency (policy on)   : %.4f ms  (set-aside=%.2fMB, window=%.2fMB, hitRatio=%.3f)\n",
+                ms_res, effective_set_aside_mb, effective_window_mb, hit_ratio);
+    std::printf("[D] Thrashing (policy on)   : %.4f ms  (hitRatio forced 1.0)\n", ms_thr);
+    std::printf("CSV,time_ms,stream=%.4f,hot=%.4f,residency=%.4f,thrashing=%.4f,data_mb=%.2f,iters=%d,set_aside_mb=%.2f,window_mb=%.2f,hit_ratio=%.3f,seed=%u\n",
+                ms_stream, ms_hot, ms_res, ms_thr, data_mb, iters, effective_set_aside_mb, effective_window_mb, hit_ratio, seed_base);
+    std::printf("\nInterpretation:\n");
+    std::printf("- [A] 是纯 streaming：通常 DRAM bytes 高，L2 hit 低；policy 很难带来稳定收益。\n");
+    std::printf("- [B] 有复用：如果工作集贴近/小于 L2，L2 hit 会明显抬升，时间下降。\n");
+    std::printf("- [C] 是“窗口大于 set-aside 的可控版本”：合理 hitRatio 可能让热点子集更稳。\n");
+    std::printf("- [D] 是经典 thrashing 配置：window >> set-aside 且 hitRatio=1.0 时，可能出现不升反降。\n");
+    std::printf("\nNCU 建议（示例）：\n");
+    std::printf("  ncu --set full --metrics gpu__time_duration.sum,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_sectors_hit_rate.pct --target-processes all ./bin/02_memory_optim_04_l2_residency\n");
+  }
 
   disable_access_policy_window(stream);
   reset_persisting_l2();

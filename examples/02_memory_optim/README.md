@@ -8,6 +8,8 @@
 |------|------|----------|--------|
 | **第 11 章** | `01_global_mem_bandwidth.cu` | Global Memory 极致优化 | 物理层（对齐）、指令层（向量化/Async Copy）、缓存层（LDG.NT/L2 驻留） |
 | **第 12 章** | `02_shared_mem_bank_conflict.cu` | Shared Memory Bank Conflict 分析 | Bank Conflict、Padding、XOR Swizzling |
+| **第 13 章** | `03_register_spill.cu` | Register Spilling 与 Occupancy 取舍 | 寄存器压力、local spill、`launch_bounds`、编译日志对比 |
+| **第 14 章 / B-04** | `04_l2_residency.cu` | L2 Residency 控制与 Thrashing 复现 | set-aside、access policy window、hitRatio、reset、可复现实验口径 |
 
 ## 🚀 快速开始
 
@@ -188,6 +190,71 @@ Swizzle Speedup : 18.50x
 
 - 该示例默认单 Block、32 线程，方便观察单 Warp 级别的 Bank Conflict 行为
 - 实际大规模 Kernel 中还需考虑多 Warp、多 Block 之间的调度与占用情况
+
+---
+
+### 第 13 章：Register Spilling 与 Occupancy (`03_register_spill.cu`)
+
+该示例用于构造寄存器压力并观察 spilling 对性能的影响，核心是对比三种变体：
+
+- **A) baseline（REGS=32）**：寄存器压力较低
+- **B) high-reg（REGS=256）**：寄存器压力高，更容易触发 local spill
+- **C) launch_bounds（2 blocks/SM 提示）**：演示 occupancy 约束与寄存器分配的权衡
+
+#### 运行示例
+
+```bash
+# 默认参数
+./bin/02_memory_optim_03_register_spill
+
+# 自定义规模
+./bin/02_memory_optim_03_register_spill 1048576 256
+```
+
+#### 分析建议
+
+- 编译时加 `-Xptxas=-v`，对比不同变体的 `reg / spill loads / spill stores`
+- 运行时对照 kernel 平均时间，结合编译日志判断是否出现“寄存器不够 -> spill -> 性能下降”
+- 关注 `launch_bounds` 的双刃剑效应：它是资源契约，不保证一定更快
+
+---
+
+### 第 14 章 / B-04：L2 Residency 控制 (`04_l2_residency.cu`)
+
+该示例用最小 micro-bench 复现四类场景：
+
+- **A) Streaming（policy off）**：一次性数据流式访问，通常对 residency 不敏感
+- **B) Hot Reuse（policy off）**：存在可复用热点，L2 命中提升更明显
+- **C) Residency（policy on）**：`set-aside + window + hitRatio` 的可控配置
+- **D) Thrashing（policy on）**：`window >> set-aside` 且 `hitRatio=1.0` 的典型翻车配置
+
+#### 运行示例
+
+```bash
+# 位置参数（兼容旧用法）
+./bin/02_memory_optim_04_l2_residency 64 2048 8 32 0.25
+
+# 命名参数（推荐）
+./bin/02_memory_optim_04_l2_residency --data-mb 64 --iters 2048 --set-aside-mb 8 --window-mb 32 --hit-ratio 0.25
+
+# 固定 seed + 仅输出 CSV（适合批量扫参）
+./bin/02_memory_optim_04_l2_residency --data-mb 64 --iters 2048 --set-aside-mb 8 --window-mb 32 --hit-ratio 0.25 --seed 12345 --csv-only
+```
+
+#### 参数说明
+
+- `--data-mb`：输入数据规模（MB）
+- `--iters`：循环次数（放大时延差异）
+- `--set-aside-mb`：L2 persisting 预留大小
+- `--window-mb`：policy window 大小（会自动截断到设备上限）
+- `--hit-ratio`：`[0,1]`，用于描述窗口内“值得持久化”的比例
+- `--seed`：控制 mixed workload 的伪随机访问序列，便于复现实验
+- `--csv-only`：仅输出一行 CSV，方便脚本采集结果
+
+#### 输出口径
+
+程序会输出 A/B/C/D 四组平均时间，并提供一行 `CSV,time_ms,...` 便于汇总。  
+建议配合 Nsight Compute 额外采集 `time + DRAM bytes + L2 hit` 三件套，形成完整证据链。
 
 ---
 
