@@ -326,16 +326,7 @@ int main(int argc, char** argv) {
   dim3 block(256);
   dim3 grid(std::min(65535, (n + (int)block.x - 1) / (int)block.x));
 
-  // 1) Streaming baseline（policy off）
-  disable_access_policy_window(stream);
-  reset_persisting_l2();
-  auto launch_stream = [&](cudaStream_t s) {
-    streaming_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters);
-    CUDA_CHECK(cudaGetLastError());
-  };
-  float ms_stream = time_kernel([&](cudaStream_t s) { launch_stream(s); }, warmup, repeats, stream);
-
-  // 2) Hot reuse baseline（policy off）
+  // 1) Hot reuse 需要的参数准备
   // hot set: 让它等于 min(data, L2*1.0) 的 2^k，方便 mask
   int hot_n = (int)(std::min(data_mb, prop.l2CacheSize / (1024.0 * 1024.0)) * 1024.0 * 1024.0 / sizeof(float));
   hot_n = std::max(4096, hot_n);
@@ -348,15 +339,7 @@ int main(int argc, char** argv) {
     hot_mask = hot_pow2 - 1;
   }
 
-  disable_access_policy_window(stream);
-  reset_persisting_l2();
-  auto launch_hot = [&](cudaStream_t s) {
-    hot_reuse_kernel<<<grid, block, 0, s>>>(d_in, d_out, n, iters, hot_mask);
-    CUDA_CHECK(cudaGetLastError());
-  };
-  float ms_hot = time_kernel([&](cudaStream_t s) { launch_hot(s); }, warmup, repeats, stream);
-
-  // 3) Mixed baseline / Residency：同一 workload，分别 policy off / on
+  // 2) Mixed baseline / Residency：同一 workload，分别 policy off / on
   // window 默认限定在 data 范围内；hot_n 取 window 的子集用于“热点访问更频繁”
   size_t set_aside_bytes = mb_to_bytes(set_aside_mb);
   set_aside_bytes = std::min(set_aside_bytes, (size_t)prop.persistingL2CacheMaxSize);
