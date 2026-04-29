@@ -50,6 +50,8 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel 8
 ```
 
+> 说明：`examples` 目录新增/删除 `.cu` 示例后，需要先重新执行一次 `cmake ..`（重新配置）再 `cmake --build .`，否则新 target 不会出现在 `build/bin`。
+
 #### Windows/CLion 环境
 - **CLion**: 直接使用 IDE 构建（输出在 `cmake-build-debug` 目录）
 - **手动构建**:

@@ -23,6 +23,8 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel 8
 ```
 
+> 提示：如果你新加了示例文件（例如 `04_l2_residency.cu`），请先重新执行 `cmake ..` 再 build；只执行 `cmake --build .` 不会自动发现新的 target。
+
 #### Windows/CLion 环境
 - 使用 CLion 直接构建（构建输出在 `cmake-build-debug` 或 `cmake-build-debug-visual-studio` 目录）
 - 或手动构建：
@@ -221,11 +223,12 @@ Swizzle Speedup : 18.50x
 
 ### 第 14 章 / B-04：L2 Residency 控制 (`04_l2_residency.cu`)
 
-该示例用最小 micro-bench 复现四类场景：
+该示例用最小 micro-bench 复现五类场景（其中 C0/C1 是同 workload 的公平对照）：
 
 - **A) Streaming（policy off）**：一次性数据流式访问，通常对 residency 不敏感
 - **B) Hot Reuse（policy off）**：存在可复用热点，L2 命中提升更明显
-- **C) Residency（policy on）**：`set-aside + window + hitRatio` 的可控配置
+- **C0) Mixed baseline（policy off）**：与 C1 完全同一 workload，用于公平对照
+- **C1) Mixed + Residency（policy on）**：`set-aside + window + hitRatio` 的可控配置
 - **D) Thrashing（policy on）**：`window >> set-aside` 且 `hitRatio=1.0` 的典型翻车配置
 
 #### 运行示例
@@ -239,6 +242,9 @@ Swizzle Speedup : 18.50x
 
 # 固定 seed + 仅输出 CSV（适合批量扫参）
 ./bin/02_memory_optim_04_l2_residency --data-mb 64 --iters 2048 --set-aside-mb 8 --window-mb 32 --hit-ratio 0.25 --seed 12345 --csv-only
+
+# 固定 workload + 多次运行统计（推荐用于判断 C1 vs C0）
+./bin/02_memory_optim_04_l2_residency --data-mb 32 --iters 4096 --set-aside-mb 24 --window-mb 16 --hit-ratio 1.0 --hot-ratio 0.25 --runs 7 --seed 12345
 ```
 
 #### 参数说明
@@ -248,12 +254,14 @@ Swizzle Speedup : 18.50x
 - `--set-aside-mb`：L2 persisting 预留大小
 - `--window-mb`：policy window 大小（会自动截断到设备上限）
 - `--hit-ratio`：`[0,1]`，用于描述窗口内“值得持久化”的比例
+- `--hot-ratio`：`[0,1]`，用于控制 mixed workload 热点子集比例（与 policy hint 解耦）
+- `--runs`：重复运行次数（输出 median/mean，建议 `5~11`）
 - `--seed`：控制 mixed workload 的伪随机访问序列，便于复现实验
 - `--csv-only`：仅输出一行 CSV，方便脚本采集结果
 
 #### 输出口径
 
-程序会输出 A/B/C/D 四组平均时间，并提供一行 `CSV,time_ms,...` 便于汇总。  
+程序会输出 A/B/C0/C1/D 五组时间统计（median + mean），并提供一行 `CSV,time_ms,...` 便于汇总。  
 建议配合 Nsight Compute 额外采集 `time + DRAM bytes + L2 hit` 三件套，形成完整证据链。
 
 ---
