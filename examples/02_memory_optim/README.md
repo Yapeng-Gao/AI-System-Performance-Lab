@@ -273,7 +273,17 @@ Swizzle Speedup : 18.50x
 
 - `fault`：仅 `cudaMallocManaged`，按需迁移
 - `prefetch`：kernel 前执行 `cudaMemPrefetchAsync`
-- `advise`：在 prefetch 基础上增加 `cudaMemAdvise` 提示
+- `advise`：`SetPreferredLocation` + `SetAccessedBy`（**不含** `SetReadMostly`，本 kernel 会写回）
+
+**RTX 5090 参考（n=16777216, iters=32, runs=5, warmup=1）**
+
+| mode | median (ms) | 备注 |
+|------|-------------|------|
+| fault | 0.221 | 稳态与 prefetch 接近 |
+| prefetch | 0.221 | 数据已热在 GPU，prefetch 边际收益小 |
+| advise | 0.219 | 修复 ReadMostly 误用后与 fault 同阶 |
+
+> 反例：对可写 UM 使用 `SetReadMostly` 时，同一配置 median 可达 **~124 ms**（约 560× 退化）。
 
 #### 运行示例
 
@@ -303,12 +313,24 @@ Swizzle Speedup : 18.50x
 输出包含：`first / median / p95 / mean`。  
 建议将三种 mode 在同一输入规模下对照，先看首轮抖动是否显著下降，再结合 NSYS/NCU 做证据闭环。
 
+#### NSYS 一键采集
+
+```bash
+cd examples/02_memory_optim
+chmod +x 05_profile_unified_memory.sh
+bash 05_profile_unified_memory.sh
+# 仅采集某一模式：bash 05_profile_unified_memory.sh fault
+```
+
+生成 `um_fault_trace.nsys-rep`、`um_prefetch_trace.nsys-rep`、`um_advise_trace.nsys-rep`，在 Nsight Systems 中查看 **UVM page fault / page migration** 时间线。
+
 ---
 
 ## 🔧 工具脚本
 
 - `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析 Global Memory 访问模式和带宽利用率
 - `02_profile_banks.sh`：Shared Memory Bank Conflict 分析脚本（Linux/WSL 专用），使用 Nsight Compute 采集共享内存 Wavefront 等指标，验证 Naive / Padding / Swizzling 的 Bank Conflict 差异
+- `05_profile_unified_memory.sh`：B-05 UM 证据链脚本（Linux/WSL 专用），使用 Nsight Systems 批量采集 fault/prefetch/advise 三组 trace
 
 ## 📝 注意事项
 
