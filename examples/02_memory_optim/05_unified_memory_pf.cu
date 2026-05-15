@@ -174,17 +174,17 @@ int main(int argc, char** argv) {
   const dim3 block(256);
   const dim3 grid(std::min(65535, (n + (int)block.x - 1) / (int)block.x));
 
-  auto apply_mode = [&](UmMode m) {
-    if (m == UmMode::FaultOnly) return;
-    if (m == UmMode::Advise) {
-      // CUDA 12+ cudaMemAdvise 第 4 参数改为 cudaMemLocation
-      cudaMemLocation loc{cudaMemLocationTypeDevice, device};
-      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetPreferredLocation, loc));
-      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetAccessedBy, loc));
-      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetReadMostly, loc));
-    }
-    // CUDA 12+ cudaMemPrefetchAsync 新签名：(ptr, count, location, flags, stream)
-    // 其中 location 为 cudaMemLocation，flags 为 0
+  // Advise 只需在分配后设置一次；hint 会持续到释放。
+  // 注意：本 kernel 会写回 data[]，不可使用 SetReadMostly（只读共享 hint），
+  // 否则 GPU 写触发 duplicate-page 失效/迁移，稳态可慢两个数量级。
+  if (mode == UmMode::Advise) {
+    cudaMemLocation loc{cudaMemLocationTypeDevice, device};
+    CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetPreferredLocation, loc));
+    CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetAccessedBy, loc));
+  }
+
+  auto prefetch_if_needed = [&]() {
+    if (mode == UmMode::FaultOnly) return;
     cudaMemLocation prefetch_loc{cudaMemLocationTypeDevice, device};
     CUDA_CHECK(cudaMemPrefetchAsync(data, bytes, prefetch_loc, 0, stream));
     CUDA_CHECK(cudaStreamSynchronize(stream));
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
   };
 
   for (int i = 0; i < warmup; ++i) {
-    apply_mode(mode);
+    prefetch_if_needed();
     (void)time_once_ms([&](cudaStream_t s) { launch(s); }, stream);
     CUDA_CHECK(cudaStreamSynchronize(stream));
   }
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
   std::vector<float> times;
   times.reserve((size_t)runs);
   for (int i = 0; i < runs; ++i) {
-    apply_mode(mode);
+    prefetch_if_needed();
     float ms = time_once_ms([&](cudaStream_t s) { launch(s); }, stream);
     times.push_back(ms);
   }
