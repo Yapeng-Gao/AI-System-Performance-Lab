@@ -177,11 +177,16 @@ int main(int argc, char** argv) {
   auto apply_mode = [&](UmMode m) {
     if (m == UmMode::FaultOnly) return;
     if (m == UmMode::Advise) {
-      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetPreferredLocation, device));
-      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetAccessedBy, device));
-      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetReadMostly, device));
+      // CUDA 12+ cudaMemAdvise 第 4 参数改为 cudaMemLocation
+      cudaMemLocation loc{cudaMemLocationTypeDevice, device};
+      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetPreferredLocation, loc));
+      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetAccessedBy, loc));
+      CUDA_CHECK(cudaMemAdvise(data, bytes, cudaMemAdviseSetReadMostly, loc));
     }
-    CUDA_CHECK(cudaMemPrefetchAsync(data, bytes, device, stream));
+    // CUDA 12+ cudaMemPrefetchAsync 新签名：(ptr, count, location, flags, stream)
+    // 其中 location 为 cudaMemLocation，flags 为 0
+    cudaMemLocation prefetch_loc{cudaMemLocationTypeDevice, device};
+    CUDA_CHECK(cudaMemPrefetchAsync(data, bytes, prefetch_loc, 0, stream));
     CUDA_CHECK(cudaStreamSynchronize(stream));
   };
 
