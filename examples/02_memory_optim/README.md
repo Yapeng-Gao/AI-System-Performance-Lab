@@ -285,6 +285,8 @@ Swizzle Speedup : 18.50x
 
 > 反例：对可写 UM 使用 `SetReadMostly` 时，同一配置 median 可达 **~124 ms**（约 560× 退化）。
 
+**冷启动（fault, warmup=0, runs=3）**：`first≈29 ms`，`median≈0.23 ms`（首轮 fault 迁移 vs 稳态差 **~120×**）。采集：`WARMUP=0 RUNS=3 bash 05_profile_unified_memory.sh fault`
+
 #### 运行示例
 
 ```bash
