@@ -10,6 +10,7 @@
 | **第 12 章** | `02_shared_mem_bank_conflict.cu` | Shared Memory Bank Conflict 分析 | Bank Conflict、Padding、XOR Swizzling |
 | **第 13 章** | `03_register_spill.cu` | Register Spilling 与 Occupancy 取舍 | 寄存器压力、local spill、`launch_bounds`、编译日志对比 |
 | **第 14 章 / B-04** | `04_l2_residency.cu` | L2 Residency 控制与 Thrashing 复现 | set-aside、access policy window、hitRatio、reset、可复现实验口径 |
+| **第 15 章 / B-05** | `05_unified_memory_pf.cu` | Unified Memory 的 fault/prefetch/advise 对照 | 首轮抖动、迁移干扰、first/median/p95 统计口径 |
 
 ## 🚀 快速开始
 
@@ -263,6 +264,44 @@ Swizzle Speedup : 18.50x
 
 程序会输出 A/B/C0/C1/D 五组时间统计（median + mean），并提供一行 `CSV,time_ms,...` 便于汇总。  
 建议配合 Nsight Compute 额外采集 `time + DRAM bytes + L2 hit` 三件套，形成完整证据链。
+
+---
+
+### 第 15 章 / B-05：Unified Memory 行为边界 (`05_unified_memory_pf.cu`)
+
+该示例用于对比 UM 的三种策略：
+
+- `fault`：仅 `cudaMallocManaged`，按需迁移
+- `prefetch`：kernel 前执行 `cudaMemPrefetchAsync`
+- `advise`：在 prefetch 基础上增加 `cudaMemAdvise` 提示
+
+#### 运行示例
+
+```bash
+# fault-only
+./bin/02_memory_optim_05_unified_memory_pf --mode fault --n 16777216 --iters 32 --runs 5 --warmup 1
+
+# prefetch
+./bin/02_memory_optim_05_unified_memory_pf --mode prefetch --n 16777216 --iters 32 --runs 5 --warmup 1
+
+# advise
+./bin/02_memory_optim_05_unified_memory_pf --mode advise --n 16777216 --iters 32 --runs 5 --warmup 1
+```
+
+#### 参数说明
+
+- `--n`：元素数量（float）
+- `--iters`：kernel 内循环次数
+- `--mode`：`fault|prefetch|advise`
+- `--runs`：统计轮次
+- `--warmup`：不计入统计的预热轮次
+- `--device`：目标 GPU 设备号
+- `--csv-only`：仅输出 CSV 行，便于批量采集
+
+#### 输出口径
+
+输出包含：`first / median / p95 / mean`。  
+建议将三种 mode 在同一输入规模下对照，先看首轮抖动是否显著下降，再结合 NSYS/NCU 做证据闭环。
 
 ---
 
