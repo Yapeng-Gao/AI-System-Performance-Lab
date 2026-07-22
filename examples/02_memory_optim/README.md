@@ -11,6 +11,7 @@
 | **第 13 章** | `03_register_spill.cu` | Register Spilling 与 Occupancy 取舍 | 寄存器压力、local spill、`launch_bounds`、编译日志对比 |
 | **第 14 章 / B-04** | `04_l2_residency.cu` | L2 Residency 控制与 Thrashing 复现 | set-aside、access policy window、hitRatio、reset、可复现实验口径 |
 | **第 15 章 / B-05** | `05_unified_memory_pf.cu` | Unified Memory 的 fault/prefetch/advise 对照 | 首轮抖动、迁移干扰、first/median/p95 统计口径 |
+| **第 16 章 / B-06** | `06_pinned_dma.cu` | Pinned / DMA / Overlap 吞吐边界 | pageable vs pinned、serial vs overlap、双向 CE、mapped zero-copy |
 
 ## 🚀 快速开始
 
@@ -328,11 +329,55 @@ bash 05_profile_unified_memory.sh
 
 ---
 
+### 第 16 章 / B-06：Pinned Memory 与 DMA (`06_pinned_dma.cu`)
+
+对照六种 Host↔Device 路径：
+
+| mode | 含义 |
+|------|------|
+| `pageable` | `malloc` + `cudaMemcpyAsync` H2D（伪异步地板） |
+| `pinned` | `cudaMallocHost` + Async H2D |
+| `serial` | pinned + **1** stream 切块 H2D→Kernel（overlap 公平基线） |
+| `overlap` | pinned + **多** stream 切块（跨 chunk 重叠） |
+| `bidir` | pinned + H2D∥D2H（合计吞吐） |
+| `mapped` | `cudaHostAllocMapped`，kernel 直读 host（有效带宽 ≠ memcpy） |
+
+#### 运行示例
+
+```bash
+./bin/02_memory_optim_06_pinned_dma --mode pageable --mb 256 --runs 5
+./bin/02_memory_optim_06_pinned_dma --mode pinned   --mb 256 --runs 5
+./bin/02_memory_optim_06_pinned_dma --mode serial   --mb 256 --chunk-mb 16 --kernel-iters 8
+./bin/02_memory_optim_06_pinned_dma --mode overlap  --mb 256 --chunk-mb 16 --streams 4 --kernel-iters 8
+./bin/02_memory_optim_06_pinned_dma --mode bidir    --mb 256 --runs 5
+./bin/02_memory_optim_06_pinned_dma --mode mapped   --mb 64  --runs 5
+```
+
+批量跑 + 可选 NSYS：
+
+```bash
+bash examples/02_memory_optim/06_profile_pinned_dma.sh
+DO_NSYS=1 bash examples/02_memory_optim/06_profile_pinned_dma.sh overlap
+```
+
+#### NSYS（验证真 overlap）
+
+```bash
+nsys profile -o pinned_overlap --force-overwrite true \
+  ./bin/02_memory_optim_06_pinned_dma --mode overlap --mb 256 --chunk-mb 16 --streams 4 --kernel-iters 8
+```
+
+在时间线确认 **某 chunk 的 Copy** 与 **另一 chunk 的 Kernel** 是否存在重叠窗口。  
+判定 overlap 成功：端到端应快于同参数的 `--mode serial`。
+
+---
+
 ## 🔧 工具脚本
 
 - `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析 Global Memory 访问模式和带宽利用率
 - `02_profile_banks.sh`：Shared Memory Bank Conflict 分析脚本（Linux/WSL 专用），使用 Nsight Compute 采集共享内存 Wavefront 等指标，验证 Naive / Padding / Swizzling 的 Bank Conflict 差异
 - `05_profile_unified_memory.sh`：B-05 UM 证据链脚本（Linux/WSL 专用），使用 Nsight Systems 批量采集 fault/prefetch/advise 三组 trace
+- `06_profile_pinned_dma.sh`：B-06 Pinned/DMA 批量对照（可选 `DO_NSYS=1` 采集 overlap 时间线）
 
 ## 📝 注意事项
 

@@ -25,7 +25,7 @@
 ## 1. 目录总览（Module A–E）
 
 - **Module A（1–10）CUDA 基础与 GPU 架构**：✅（文章/示例已落地）
-- **Module B（11–20）内存体系与访存优化**：🟡（11–12 已落地，其余规划中）
+- **Module B（11–20）内存体系与访存优化**：🟡（11–16 / B-01～B-06 已落地；17–20 规划中）
 - **Module C（21–30）核心编程技巧与并发原语**：⏳（规划中）
 - **Module D（31–40）计算原语与高级算子实现**：⏳（规划中）
 - **Module E（41–50）深度学习工程实战与系统集成**：⏳（规划中；仓库 Python/绑定为占位）
@@ -66,33 +66,35 @@
 
 > **模块目标**：攻克 Memory Wall，掌握从访问模式、缓存策略到异步搬运流水线的系统化方法。
 
-### 3.1 已落地章节（11–12）✅
+### 3.1 已落地章节（11–16 / B-01～B-06）✅
 
-| 篇章 | 主题 | 文章（正文） | 示例（可运行） |
-|---|---|---|---|
-| 11 | Global Memory：Coalescing / 向量化 / TMA 视角 | `article/02_memory_optim/B-01*.md` ✅ | `examples/02_memory_optim/01_global_mem_bandwidth.cu` ✅ |
-| 12 | Shared Memory：Bank / Padding / Swizzle | `article/02_memory_optim/B-02*.md` ✅ | `examples/02_memory_optim/02_shared_mem_bank_conflict.cu` ✅ |
+| 篇章 | 文件编号 | 主题 | 文章（正文） | 示例（可运行） |
+|---|---|---|---|---|
+| 11 | **B-01** | Global Memory：Coalescing / 向量化 / TMA 视角 | `article/02_memory_optim/B-01*.md` ✅ | `examples/02_memory_optim/01_global_mem_bandwidth.cu` ✅ |
+| 12 | **B-02** | Shared Memory：Bank / Padding / Swizzle | `article/02_memory_optim/B-02*.md` ✅ | `examples/02_memory_optim/02_shared_mem_bank_conflict.cu` ✅ |
+| 13 | **B-03** | 寄存器压力与 Spilling / Occupancy | `article/02_memory_optim/B-03*.md` ✅ | `examples/02_memory_optim/03_register_spill.cu` ✅ |
+| 14 | **B-04** | L2 Cache 行为与 Residency | `article/02_memory_optim/B-04*.md` ✅ | `examples/02_memory_optim/04_l2_residency.cu` ✅ |
+| 15 | **B-05** | Unified Memory：Page Fault / Prefetch / Advise | `article/02_memory_optim/B-05*.md` ✅ | `examples/02_memory_optim/05_unified_memory_pf.cu` ✅（含 `05_profile_unified_memory.sh`） |
+| 16 | **B-06** | Pinned Memory 与 DMA：H2D/D2H 吞吐与 Overlap | `article/02_memory_optim/B-06*.md` ✅ | `examples/02_memory_optim/06_pinned_dma.cu` ✅ |
 
-### 3.2 规划中章节（13–20）⏳（建议“先落地最小可复现实验”）
+> 编号约定：规划总序号 11–20 与 Module B 内文件编号 B-01～B-10 一一对应（11↔B-01 … 16↔B-06）。
 
-为了与仓库现有 `benchmarks/` + `scripts/` 的数据链路形成闭环，建议 13–20 以**工程索引型**方式落地：每篇至少给一个可运行 micro-bench + 可复现指标（NCU/NSYS/SASS 三选一，推荐 NCU）。
+### 3.2 规划中章节（17–20）⏳（建议“先落地最小可复现实验”）
+
+为了与仓库现有 `benchmarks/` + `scripts/` 的数据链路形成闭环，建议 17–20 以**工程索引型**方式落地：每篇至少给一个可运行 micro-bench + 可复现指标（NCU/NSYS/SASS 三选一；设备内 async 优先 NCU）。
 
 - **可运行 micro-bench**
 - **NCU/NSYS 指标采集脚本入口**
 - **SASS 证据（可选）**
 
-#### 3.2.1 B-13～B-20（工程索引型写作清单）
+#### 3.2.1 B-07～B-10（工程索引型写作清单）
 
-| 篇章 | 工程索引型标题（建议） | 最小可复现实验（MVP） | 证据/指标（最低要求） | 代码落点（占位） |
+| 篇章 | 工程索引型标题（建议） | 最小可复现实验（MVP） | 证据/指标（最低要求） | 代码落点 |
 |---|---|---|---|---|
-| 13 | 寄存器压力与 Spilling：如何发现、如何量化、如何避免 | 构造高寄存器使用 kernel，对比 `--maxrregcount`/`__launch_bounds__` 前后 | `ptxas info`（reg、spill loads/stores）+ SASS `LDL/STL`（可选） | `examples/02_memory_optim/03_register_spill.cu`（建议新增） |
-| 14 | L2 Cache 行为与 Residency：Access Policy / Persisting vs Streaming | 同一输入反复访问 vs 流式访问；对比 L2 命中与吞吐 | NCU：L2/DRAM 吞吐、命中相关指标（以结果为主） | `examples/02_memory_optim/04_l2_residency.cu`（建议新增） |
-| 15 | Unified Memory：Page Fault、Prefetch、Advise 的性能陷阱 | UM 分配 + 首次触达 vs 预取 vs advise；对比时间与 page fault 行为 | NSYS/日志（prefetch 前后耗时）或 NCU（以可复现为主） | `examples/02_memory_optim/05_unified_memory_pf.cu`（建议新增） |
-| 16 | Pinned Memory 与 DMA：H2D/D2H 吞吐上限与 Overlap 条件 | Pageable vs pinned；单 stream vs multi-stream copy | CUDA event 计时 +（可选）NSYS 时间线 | `examples/02_memory_optim/06_pinned_dma.cu`（建议新增） |
-| 17 | Async Copy / Pipeline：何时能隐藏延迟，何时反而变慢 | `cuda::pipeline`/`memcpy_async` 对比同步 load；扫不同 compute intensity | NCU：sm 吞吐 vs dram 吞吐（或简单吞吐对比表） | `benchmarks/cp_async_pipeline.cu`（已存在，可拆成 example） |
-| 18 | Hopper TMA（可选）：从 API 到吞吐瓶颈（需要硬件门槛） | 最小 TMA copy + 计算模板（若覆盖） | 以 SASS/NCU 证据为主 | `examples/02_memory_optim/07_tma_intro.cu`（可选） |
-| 19 | 数据布局（AoS/SoA/Transpose）：一次布局调整带来的事务变化 | AoS vs SoA + transpose micro-bench | NCU：dram 吞吐 +（可选）sectors/request 类指标 | `examples/02_memory_optim/08_layout_transform.cu`（建议新增） |
-| 20 | Module B Checklist：从“症状”到“证据”到“处方”的统一表 | 汇总 11–19 的实验结论与常见坑 | 输出 1 页 checklist + 对应 benchmark/脚本入口 | `docs/CUDA专栏规划.md`（本文件）+ `docs/results/` |
+| 17 / **B-07** | Async Copy / Pipeline：何时能隐藏延迟，何时反而变慢 | `cuda::pipeline`/`memcpy_async` 对比同步 load；扫不同 compute intensity（**设备侧** GMEM→SMEM，不重复 B-06 的 Host↔Device） | NCU：sm 吞吐 vs dram 吞吐（或简单吞吐对比表） | `benchmarks/cp_async_pipeline.cu`（已存在，可拆成 example） |
+| 18 / **B-08** | Hopper TMA（可选）：从 API 到吞吐瓶颈（需要硬件门槛） | 最小 TMA copy + 计算模板（若覆盖） | 以 SASS/NCU 证据为主 | `examples/02_memory_optim/07_tma_intro.cu`（可选） |
+| 19 / **B-09** | 数据布局（AoS/SoA/Transpose）：一次布局调整带来的事务变化 | AoS vs SoA + transpose micro-bench | NCU：dram 吞吐 +（可选）sectors/request 类指标 | `examples/02_memory_optim/08_layout_transform.cu`（建议新增） |
+| 20 / **B-10** | Module B Checklist：从“症状”到“证据”到“处方”的统一表 | 汇总 11–19 的实验结论与常见坑 | 输出 1 页 checklist + 对应 benchmark/脚本入口 | `docs/CUDA专栏规划.md`（本文件）+ `docs/results/` |
 
 #### 3.2.2 每篇文章的固定结构（模板）
 
@@ -102,6 +104,60 @@
 - **证据链**：至少一种（NCU/NSYS/SASS），并落盘到 `docs/results/`
 - **优化路径**：从“诊断”到“修改”到“回归验证”的步骤
 - **常见误区**：把最常踩的坑写成 checklist
+
+#### 3.2.3 B-06 写作大纲（Pinned / DMA / Overlap）✅ 已落地
+
+> 正文与示例已写入：`article/02_memory_optim/B-06*.md`、`examples/02_memory_optim/06_pinned_dma.cu`。下方保留大纲便于对照审稿。
+
+**建议标题**：`B-06. Pinned Memory 与 DMA：H2D/D2H 吞吐上限与 Overlap 条件`
+
+**与前后章的边界**
+
+| 已有章节 | 已覆盖 | B-06 应深化 / 避免重复 |
+|---|---|---|
+| A-07 | UVA、Zero-Copy 概念警示 | 用 micro-bench 量化 mapped vs memcpy；给出“只读一次 / 不缓存”判定 |
+| A-08 | Stream 流水线、Pinned 是硬前置 | 不重讲三级流水线教程；改讲 **为何伪异步、CE 数量、双向饱和、chunk 粒度** |
+| B-05 | UM fault/prefetch/advise → 显式管理 | 承接“显式路径怎么做到可控”；对照表可引用 B-05 §6 |
+| B-07（规划） | 设备侧 async / pipeline | 本章只到 Host↔Device；GMEM→SMEM 留给下一章 |
+
+**TL;DR 目标结论（写作时先写死 5 条）**
+
+1. Pageable 上的 `cudaMemcpyAsync` **不是真异步**：驱动先 stage 到临时 pinned，再 DMA；吞吐低、且易与其他流串行化。
+2. Pinned（`cudaMallocHost` / `cudaHostAlloc`）是 **DMA 直达 + 真 overlap** 的物理前提；`cudaHostRegister` 可用但通常更慢、更易踩 NUMA/对齐坑。
+3. Overlap **三条件同时成立**：pinned + 非默认 stream + `asyncEngineCount≥1`；H2D∥D2H 还要求足够 CE（通常看 `asyncEngineCount≥2`）且主机内存带宽跟得上。
+4. 吞吐上限常不是“理论 PCIe”，而是 **min(PCIe有效带宽, DRAM/NUMA带宽, 驱动开销/小包启动)**；小传输 latency-bound，大传输才逼近链路墙。
+5. Zero-Copy（mapped pinned）省的是 memcpy launch，**不省 PCIe**；离散卡上仅适合“触达少、几乎不复用”的路径，否则直接打穿 PCIe。
+
+**建议正文结构**
+
+1. **问题定义**：B-05 之后，显式路径仍可能“看起来 Async 但不加速”——伪异步、伪 overlap、双向打不满。
+2. **物理模型**：Pageable staging → Pinned DMA；Copy Engine 与 Compute Engine 分家；`asyncEngineCount` 含义。
+3. **分配与 flags**：`cudaMallocHost` vs `cudaHostAlloc`（Default / Portable / Mapped / WriteCombined）vs `cudaHostRegister`；Pinned 过量会挤占 OS 可分页内存。
+4. **Overlap 决策表**：单条件失败时的 NSYS 症状（串行 Copy、Host sync、同流依赖）。
+5. **吞吐实验矩阵（MVP）**：扫 size；对照 pageable / pinned /（可选）WriteCombined；单向 H2D、单向 D2H、双向并行；可选 NUMA local vs remote。
+6. **Zero-Copy 分支**：mapped kernel 直读 vs 显式 memcpy；与 A-07 警示对齐，用数据判停。
+7. **工程边界（2024–2026）**：小包合并；`cudaMemcpyBatchAsync`（CUDA 12.8+）摊销 launch 开销（扩展阅读）；Grace NVLink-C2C / HMM 与“传统 PCIe+pinned”对照（注明硬件门槛，不作本章必跑）。
+8. **误区清单 + SOP + 下一章钩子**（→ B-07 设备内 async）。
+
+**最小可复现实验（`06_pinned_dma.cu`）**
+
+| 编号 | 配置 | 要回答的问题 |
+|---|---|---|
+| A | pageable + `cudaMemcpyAsync` | 是否退化为 sync / staging？吞吐多少？ |
+| B | pinned + Async H2D | 单向 DMA 吞吐是否明显上升？ |
+| C | serial（1 stream 切块 H2D→Kernel） | overlap 的公平串行基线 |
+| D | overlap（多 stream 切块） | 相对 serial 端到端是否下降？NSYS 是否跨 chunk 重叠？ |
+| E | pinned + 双向 H2D∥D2H | 合计是否接近 2× 单向，还是被主机内存/CE 卡住？ |
+| F | mapped zero-copy kernel | 有效 host-read 带宽（勿直接对比 memcpy GB/s） |
+
+**证据最低要求**：CUDA event 得到 GB/s（first/median）；NSYS 看 Copy / Compute 时间线是否重叠。可选：记录 `asyncEngineCount`、PCIe 代数、NUMA 绑定。
+
+**参考文献池（写作时选用，勿全堆）**
+
+- 官方：CUDA Best Practices（Pinned / Async Overlap）、Programming Guide（Async Execution）、Runtime API（`cudaHostAlloc` flags、API sync behavior）
+- 经典博客：[How to Optimize Data Transfers](https://developer.nvidia.com/blog/how-optimize-data-transfers-cuda-cc/)、[How to Overlap Data Transfers](https://developer.nvidia.com/blog/how-overlap-data-transfers-cuda-cc/)
+- 新 API：CUDA 12.8+ [`cudaMemcpyBatchAsync`](https://docs.nvidia.com/cuda/archive/13.2.0/cuda-programming-guide/03-advanced/advanced-host-programming.html)
+- 近年研究/工程：Grace Hopper system memory（ICS’24）、MMA multipath H2D（arXiv:2512.16056）、PCIe Gen5/NUMA 实测（nvbandwidth 类工具链）
 
 ---
 
