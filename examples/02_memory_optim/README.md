@@ -12,6 +12,7 @@
 | **第 14 章 / B-04** | `04_l2_residency.cu` | L2 Residency 控制与 Thrashing 复现 | set-aside、access policy window、hitRatio、reset、可复现实验口径 |
 | **第 15 章 / B-05** | `05_unified_memory_pf.cu` | Unified Memory 的 fault/prefetch/advise 对照 | 首轮抖动、迁移干扰、first/median/p95 统计口径 |
 | **第 16 章 / B-06** | `06_pinned_dma.cu` | Pinned / DMA / Overlap 吞吐边界 | pageable vs pinned、serial vs overlap、双向 CE、mapped zero-copy |
+| **第 17 章 / B-07** | `07_cp_async_pipeline.cu` | 设备内 Async Copy / Pipeline | sync vs async1 vs pipe2/4、intensity sweep、thread-local vs block pipeline |
 
 ## 🚀 快速开始
 
@@ -377,12 +378,45 @@ nsys profile -o pinned_overlap --force-overwrite true \
 
 ---
 
+### 第 17 章 / B-07：Async Copy / Pipeline (`07_cp_async_pipeline.cu`)
+
+对照设备侧 GMEM→SMEM 路径（需要 sm_80+）：
+
+| mode | 含义 |
+|------|------|
+| `sync` | `gmem→reg→smem` 同步基线 |
+| `async1` | `memcpy_async` + 立刻 wait（无多 stage overlap） |
+| `pipe2` / `pipe4` | thread-local 2/4-stage software pipeline |
+| `pipe2_blk` | block-shared 2-stage pipeline（对照 barrier 开销） |
+| `sweep` | 扫 `fma-iters`，输出 sync/pipe2/pipe4 加速比 CSV |
+
+#### 运行示例
+
+```bash
+./bin/02_memory_optim_07_cp_async_pipeline --mode sync   --fma-iters 8
+./bin/02_memory_optim_07_cp_async_pipeline --mode pipe2  --fma-iters 8
+./bin/02_memory_optim_07_cp_async_pipeline --mode pipe4  --fma-iters 8
+./bin/02_memory_optim_07_cp_async_pipeline --mode sweep
+```
+
+批量跑 + 可选 NCU：
+
+```bash
+bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
+DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
+```
+
+结果回填：`docs/results/B-07_cp_async_pipeline.md`。配套文章：`article/02_memory_optim/B-07*.md`。
+
+---
+
 ## 🔧 工具脚本
 
 - `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析 Global Memory 访问模式和带宽利用率
 - `02_profile_banks.sh`：Shared Memory Bank Conflict 分析脚本（Linux/WSL 专用），使用 Nsight Compute 采集共享内存 Wavefront 等指标，验证 Naive / Padding / Swizzling 的 Bank Conflict 差异
 - `05_profile_unified_memory.sh`：B-05 UM 证据链脚本（Linux/WSL 专用），使用 Nsight Systems 批量采集 fault/prefetch/advise 三组 trace
 - `06_profile_pinned_dma.sh`：B-06 Pinned/DMA 批量对照（可选 `DO_NSYS=1` 采集 overlap 时间线）
+- `07_profile_cp_async_pipeline.sh`：B-07 设备内 async/pipeline 批量对照（可选 `DO_NCU=1`）
 
 ## 📝 注意事项
 

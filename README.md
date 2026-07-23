@@ -98,7 +98,7 @@ cmake --build . --config Release --parallel 8
 | 模块 | 路径 | 核心内容 |
 | :--- | :--- | :--- |
 | **Module A** | `examples/01_cuda_basics` + `article/01_cuda_basic` | 架构映射, 线程调度, SASS 分析 |
-| **Module B** | `examples/02_memory_optim` + `article/02_memory_optim` | Coalescing, Shared, L2, UM, Pinned/DMA |
+| **Module B** | `examples/02_memory_optim` + `article/02_memory_optim` | Coalescing, Shared, L2, UM, Pinned/DMA, Async Copy/Pipeline |
 | **Module C** | `examples/03_compute_primitives` | Warp Primitives, CUDA Graphs |
 | **Module D** | `src/kernels/cuda/math` | Tensor Core (WGMMA), FP8 |
 | **Module E** | `python/aspl/triton_kernels` | vLLM PagedAttention, Triton |
