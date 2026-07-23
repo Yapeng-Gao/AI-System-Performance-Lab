@@ -29,59 +29,76 @@ AI-System-Performance-Lab/
 ## 🚀 快速开始 (Windows/Linux)
 
 ### 前置要求
-*   **CMake**: `>= 3.25` (推荐 3.28+, 4.0 为预览版支持)
-*   **CUDA Toolkit**: `>= 12.0` (推荐 12.3+ 以支持 Hopper 完整特性)
-*   **Compiler**: C++17 Support Required
-    *   Linux: GCC >= 9.0
-    *   Windows: MSVC v143+ (Visual Studio 2022,vision 17)
-*   **Driver**: `>= 535.xx` (与 CUDA 12 匹配)
+*   **CMake**: `>= 3.25`（Ubuntu 24.04 自带 3.28 即可；与 CUDA 13.2 无关）
+*   **CUDA Toolkit**: `>= 12.0`（推荐 12.6+ / 13.x）
+*   **Compiler**: C++17（Linux GCC >= 9；Windows MSVC VS2022）
+*   **Driver**: 能跑所选 Toolkit（`nvidia-smi` 右上角是驱动支持上限，不是 `nvcc` 版本）
+
+> 请装 NVIDIA 官方 Toolkit。不要用 Ubuntu 源的 `apt install nvidia-cuda-toolkit`。
 
 ### 编译构建
 
 #### Linux 环境
+
 ```bash
-# 1. 创建构建目录
-mkdir build && cd build
+# 一次性：让 nvcc 进 PATH（装完 Toolkit 后通常只需做一次，可写进 ~/.bashrc）
+export CUDA_HOME=/usr/local/cuda-13.2   # 或 /usr/local/cuda
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
 
-# 2. 生成构建文件
-cmake .. -DCMAKE_BUILD_TYPE=Release
-
-# 3. 编译
-cmake --build . --parallel 8
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=native
+cmake --build . --parallel "$(nproc)"
 ```
 
-> 说明：`examples` 目录新增/删除 `.cu` 示例后，需要先重新执行一次 `cmake ..`（重新配置）再 `cmake --build .`，否则新 target 不会出现在 `build/bin`。
+若 `native` 探测失败，把架构写死（`nvidia-smi --query-gpu=compute_cap --format=csv,noheader`，如 `8.9` → `89`）：
+
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=89
+cmake --build . --parallel "$(nproc)"
+```
+
+只编某个示例：
+
+```bash
+cmake --build . --parallel "$(nproc)" --target 02_memory_optim_06_pinned_dma
+```
+
+> `examples` 里增删 `.cu` 后，先再跑一次 `cmake ..`，再 `cmake --build .`。
+
+常见问题（可选阅读）：
+
+| 报错 | 处理 |
+|---|---|
+| `nvcc: command not found` | 检查 `CUDA_HOME`/`PATH`，`which nvcc` |
+| `CMAKE_CUDA_ARCHITECTURES must be non-empty` | `rm -rf build` 后重配，并显式传架构 |
+| `nvbench ... CMake 3.30.4 or higher` | 与 Toolkit 无关；默认已不拉 nvbench。勿开 `-DASPL_ENABLE_NVBENCH=ON`，除非本机 CMake ≥ 3.30.4 |
 
 #### Windows/CLion 环境
-- **CLion**: 直接使用 IDE 构建（输出在 `cmake-build-debug` 目录）
-- **手动构建**:
+- **CLion**: 直接构建（输出在 `cmake-build-debug` 等目录）
+- **手动**:
 ```powershell
-mkdir build
-cd build
-cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-cmake --build . --parallel 8
+mkdir build; cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CUDA_ARCHITECTURES=89
+cmake --build . --config Release --parallel 8
 ```
 
 ### 运行示例
 
-编译成功后，可执行文件位置：
-- **Linux**: `build/bin/` 目录
-- **Windows/CLion**: `cmake-build-debug/bin/` 或 `cmake-build-debug-visual-studio/bin/` 目录
+- **Linux**: `build/bin/`
+- **Windows/CLion**: `cmake-build-debug/bin/` 或 `build/bin/Release/`
 
 ```bash
-# Linux
 ./build/bin/01_cuda_basics_01_hello_modern
-
-# Windows (PowerShell)
-.\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
+./build/bin/02_memory_optim_06_pinned_dma --mode pinned --mb 256
 ```
 
 ## 📚 专栏内容映射
 
 | 模块 | 路径 | 核心内容 |
 | :--- | :--- | :--- |
-| **Module A** | `examples/01_cuda_basics` | 架构映射, 线程调度, SASS 分析 |
-| **Module B** | `src/kernels/cuda/memory` | TMA, Pinned Memory, Coalescing |
+| **Module A** | `examples/01_cuda_basics` + `article/01_cuda_basic` | 架构映射, 线程调度, SASS 分析 |
+| **Module B** | `examples/02_memory_optim` + `article/02_memory_optim` | Coalescing, Shared, L2, UM, Pinned/DMA |
 | **Module C** | `examples/03_compute_primitives` | Warp Primitives, CUDA Graphs |
 | **Module D** | `src/kernels/cuda/math` | Tensor Core (WGMMA), FP8 |
 | **Module E** | `python/aspl/triton_kernels` | vLLM PagedAttention, Triton |
