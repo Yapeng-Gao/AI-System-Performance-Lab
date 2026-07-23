@@ -107,9 +107,14 @@
 
 #### 3.2.3 B-06 写作大纲（Pinned / DMA / Overlap）✅ 已落地
 
-> 正文与示例已写入：`article/02_memory_optim/B-06*.md`、`examples/02_memory_optim/06_pinned_dma.cu`。下方保留大纲便于对照审稿。
+> **已交付**：
+> - 正文：`article/02_memory_optim/B-06*.md`（含原理图、RTX 5090 实测、NSYS CLI 旁证）
+> - 封面：`article/02_memory_optim/assets/B-06-pinned-dma-cover.png`
+> - 示例：`examples/02_memory_optim/06_pinned_dma.cu` + `06_profile_pinned_dma.sh`
+>
+> 下方保留大纲便于对照审稿；以正文为准。
 
-**建议标题**：`B-06. Pinned Memory 与 DMA：H2D/D2H 吞吐上限与 Overlap 条件`
+**标题**：`B-06. Pinned Memory 与 DMA：H2D/D2H 吞吐上限与 Overlap 条件`
 
 **与前后章的边界**
 
@@ -150,14 +155,14 @@
 | E | pinned + 双向 H2D∥D2H | 合计是否接近 2× 单向，还是被主机内存/CE 卡住？ |
 | F | mapped zero-copy kernel | 有效 host-read 带宽（勿直接对比 memcpy GB/s） |
 
-**证据最低要求**：CUDA event 得到 GB/s（first/median）；NSYS 看 Copy / Compute 时间线是否重叠。可选：记录 `asyncEngineCount`、PCIe 代数、NUMA 绑定。
+**证据最低要求**：CUDA event / 墙钟得到 GB/s（first/median）；优先用 `serial` vs `overlap` vs `pinned` 对照判定（copy-bound 时 overlap≈pinned 即成功）；NSYS CLI/`stats` 可作旁证，有 GUI 再看时间线。可选：记录 `asyncEngineCount`、PCIe 代数、NUMA 绑定。
 
-**参考文献池（写作时选用，勿全堆）**
+**参考文献池（与正文 §9 对齐）**
 
-- 官方：CUDA Best Practices（Pinned / Async Overlap）、Programming Guide（Async Execution）、Runtime API（`cudaHostAlloc` flags、API sync behavior）
+- 官方：CUDA Best Practices（Pinned / Async Overlap）、Programming Guide（Async Execution）、Runtime API（[API sync behavior](https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html)、`cudaHostAlloc` flags）、Nsight Systems User Guide
 - 经典博客：[How to Optimize Data Transfers](https://developer.nvidia.com/blog/how-optimize-data-transfers-cuda-cc/)、[How to Overlap Data Transfers](https://developer.nvidia.com/blog/how-overlap-data-transfers-cuda-cc/)
-- 新 API：CUDA 12.8+ [`cudaMemcpyBatchAsync`](https://docs.nvidia.com/cuda/archive/13.2.0/cuda-programming-guide/03-advanced/advanced-host-programming.html)
-- 近年研究/工程：Grace Hopper system memory（ICS’24）、MMA multipath H2D（arXiv:2512.16056）、PCIe Gen5/NUMA 实测（nvbandwidth 类工具链）
+- 新 API：CUDA 12.8+ [`cudaMemcpyBatchAsync`](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-host-programming.html)
+- 近年研究/工程：Grace Hopper system memory（[ICPP’24 / arXiv:2407.07850](https://arxiv.org/abs/2407.07850)）、MultiPath H2D（[arXiv:2512.16056](https://arxiv.org/abs/2512.16056)）、PCIe Gen5/NUMA 实测（nvbandwidth 类工具链）
 
 ---
 

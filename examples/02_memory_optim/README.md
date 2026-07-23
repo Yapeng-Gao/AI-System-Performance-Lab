@@ -368,7 +368,12 @@ nsys profile -o pinned_overlap --force-overwrite true \
 ```
 
 在时间线确认 **某 chunk 的 Copy** 与 **另一 chunk 的 Kernel** 是否存在重叠窗口。  
-判定 overlap 成功：端到端应快于同参数的 `--mode serial`。
+判定 overlap 成功（与正文一致）：
+
+1. 端到端快于同参数 `--mode serial`
+2. copy-bound 时 `overlap` 逼近同 size `--mode pinned`（哪怕相对 serial 只快几个点）
+
+配套文章：`article/02_memory_optim/B-06*.md`（封面见同目录 `assets/`）。
 
 ---
 
