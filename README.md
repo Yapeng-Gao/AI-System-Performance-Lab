@@ -29,83 +29,68 @@ AI-System-Performance-Lab/
 ## 🚀 快速开始 (Windows/Linux)
 
 ### 前置要求
-*   **CMake**: `>= 3.25`（推荐 3.28+）
-*   **CUDA Toolkit**: `>= 12.0`（推荐 12.6/12.8 或 13.x；本仓库 `cmake/NVCCFlags.cmake` 硬性要求 ≥12.0）
-*   **Compiler**: C++17
-    *   Linux: GCC >= 9.0
-    *   Windows: MSVC v143+（Visual Studio 2022）
-*   **Driver**: 需支持所选 Toolkit（`nvidia-smi` 右上角 `CUDA Version` 是驱动上限，不是已装的 `nvcc` 版本）
+*   **CMake**: `>= 3.25`（Ubuntu 24.04 自带 3.28 即可；与 CUDA 13.2 无关）
+*   **CUDA Toolkit**: `>= 12.0`（推荐 12.6+ / 13.x）
+*   **Compiler**: C++17（Linux GCC >= 9；Windows MSVC VS2022）
+*   **Driver**: 能跑所选 Toolkit（`nvidia-smi` 右上角是驱动支持上限，不是 `nvcc` 版本）
 
-> Linux 请装 NVIDIA 官方 Toolkit（`cuda-toolkit-12-x` / `cuda-toolkit-13-x`）。  
-> **不要**用 Ubuntu 源的 `apt install nvidia-cuda-toolkit`，版本旧且易与官方包冲突。
+> 请装 NVIDIA 官方 Toolkit。不要用 Ubuntu 源的 `apt install nvidia-cuda-toolkit`。
 
 ### 编译构建
 
 #### Linux 环境
 
 ```bash
-# 0) 确认驱动与 nvcc（官方安装后通常在 /usr/local/cuda-* ）
-nvidia-smi
-export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
-# 若只有带版本号的目录，例如：
-#   export CUDA_HOME=/usr/local/cuda-13.2
+# 一次性：让 nvcc 进 PATH（装完 Toolkit 后通常只需做一次，可写进 ~/.bashrc）
+export CUDA_HOME=/usr/local/cuda-13.2   # 或 /usr/local/cuda
 export PATH="$CUDA_HOME/bin:$PATH"
 export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
-nvcc --version   # 应打印 Cuda compilation tools, release 12.x / 13.x
 
-# 1) 查本机 GPU 架构（例：8.9 → 传 89；9.0 → 90；7.5 → 75）
-nvidia-smi --query-gpu=name,compute_cap --format=csv
-
-# 2) 干净配置（推荐；避免旧缓存里 CMAKE_CUDA_ARCHITECTURES="" 导致失败）
-cd /path/to/AI-System-Performance-Lab
-rm -rf build && mkdir build && cd build
-unset CMAKE_CUDA_ARCHITECTURES
-
-# 3) 配置：显式指定 nvcc + 架构（也可改成 native）
-ARCH=89   # <-- 改成上一步的 compute_cap（去掉小数点）
-cmake .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CUDA_COMPILER="$(which nvcc)" \
-  -DCMAKE_CUDA_ARCHITECTURES="${ARCH}"
-
-# 4) 全量编译，或只编某个示例
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=native
 cmake --build . --parallel "$(nproc)"
-# cmake --build . --parallel "$(nproc)" --target 02_memory_optim_06_pinned_dma
 ```
 
-常用说明：
+若 `native` 探测失败，把架构写死（`nvidia-smi --query-gpu=compute_cap --format=csv,noheader`，如 `8.9` → `89`）：
 
-- 新增/删除 `examples/**/*.cu` 后，必须先重新 `cmake ..`，再 `cmake --build .`，否则新 target 不会进 `build/bin`。
-- 若报 `CMAKE_CUDA_ARCHITECTURES must be non-empty if set`：删掉 `build/` 后重配，并显式传 `-DCMAKE_CUDA_ARCHITECTURES=...`。
-- 若报 `CUDA compiler identification is unknown`：多半是 `nvcc` 不在 `PATH`，先 `which nvcc`。
-- 不确定架构时可试：`-DCMAKE_CUDA_ARCHITECTURES=native`（需本机有可见 GPU）。
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=89
+cmake --build . --parallel "$(nproc)"
+```
+
+只编某个示例：
+
+```bash
+cmake --build . --parallel "$(nproc)" --target 02_memory_optim_06_pinned_dma
+```
+
+> `examples` 里增删 `.cu` 后，先再跑一次 `cmake ..`，再 `cmake --build .`。
+
+常见问题（可选阅读）：
+
+| 报错 | 处理 |
+|---|---|
+| `nvcc: command not found` | 检查 `CUDA_HOME`/`PATH`，`which nvcc` |
+| `CMAKE_CUDA_ARCHITECTURES must be non-empty` | `rm -rf build` 后重配，并显式传架构 |
+| `nvbench ... CMake 3.30.4 or higher` | 与 Toolkit 无关；默认已不拉 nvbench。勿开 `-DASPL_ENABLE_NVBENCH=ON`，除非本机 CMake ≥ 3.30.4 |
 
 #### Windows/CLion 环境
-- **CLion**: 直接使用 IDE 构建（输出在 `cmake-build-debug` 等目录）
-- **手动构建**:
+- **CLion**: 直接构建（输出在 `cmake-build-debug` 等目录）
+- **手动**:
 ```powershell
-# 先确认 nvcc 在 PATH；架构按本机 GPU 修改（例 sm_89 → 89）
-mkdir build
-cd build
-cmake .. -G "Visual Studio 17 2022" -A x64 `
-  -DCMAKE_CUDA_COMPILER="nvcc" `
-  -DCMAKE_CUDA_ARCHITECTURES=89
+mkdir build; cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_CUDA_ARCHITECTURES=89
 cmake --build . --config Release --parallel 8
 ```
 
 ### 运行示例
 
-编译成功后，可执行文件位置：
 - **Linux**: `build/bin/`
 - **Windows/CLion**: `cmake-build-debug/bin/` 或 `build/bin/Release/`
 
 ```bash
-# Linux
 ./build/bin/01_cuda_basics_01_hello_modern
 ./build/bin/02_memory_optim_06_pinned_dma --mode pinned --mb 256
-
-# Windows (PowerShell)
-.\cmake-build-debug\bin\01_cuda_basics_01_hello_modern.exe
 ```
 
 ## 📚 专栏内容映射
