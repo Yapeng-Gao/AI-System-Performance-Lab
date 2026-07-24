@@ -1,0 +1,4 @@
+case,median_ms,role
+pinned,4.769,ceiling
+overlap_iters256,4.819,overlap
+serial_iters256,5.331,serial

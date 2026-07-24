@@ -1,17 +1,21 @@
 # Module B: 内存优化
 
-本目录包含 CUDA 内存优化相关的示例代码，是《AI 系统性能工程》专栏 Module B 的配套实战代码。
+本目录是专栏 Module B 的配套实验代码。正文在 `article/02_memory_optim/`。  
+仓库整体目录用途见 [`docs/仓库架构与现状.md`](../../docs/仓库架构与现状.md)。
 
-## 📚 目录
+**正文插图**：原理用短 ASCII；B-05～B-07 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
 
-| 章节 | 文件 | 核心内容 | 知识点 |
-|------|------|----------|--------|
-| **第 11 章** | `01_global_mem_bandwidth.cu` | Global Memory 极致优化 | 物理层（对齐）、指令层（向量化/Async Copy）、缓存层（LDG.NT/L2 驻留） |
-| **第 12 章** | `02_shared_mem_bank_conflict.cu` | Shared Memory Bank Conflict 分析 | Bank Conflict、Padding、XOR Swizzling |
-| **第 13 章** | `03_register_spill.cu` | Register Spilling 与 Occupancy 取舍 | 寄存器压力、local spill、`launch_bounds`、编译日志对比 |
-| **第 14 章 / B-04** | `04_l2_residency.cu` | L2 Residency 控制与 Thrashing 复现 | set-aside、access policy window、hitRatio、reset、可复现实验口径 |
-| **第 15 章 / B-05** | `05_unified_memory_pf.cu` | Unified Memory 的 fault/prefetch/advise 对照 | 首轮抖动、迁移干扰、first/median/p95 统计口径 |
-| **第 16 章 / B-06** | `06_pinned_dma.cu` | Pinned / DMA / Overlap 吞吐边界 | pageable vs pinned、serial vs overlap、双向 CE、mapped zero-copy |
+## 目录
+
+| 章节 | 文件 | 核心内容 | 结果 / 重画 |
+|------|------|----------|-------------|
+| **B-01** | `01_global_mem_bandwidth.cu` | Global Memory | — |
+| **B-02** | `02_shared_mem_bank_conflict.cu` | Shared Bank / Swizzle | — |
+| **B-03** | `03_register_spill.cu` | Register spill / Occupancy | — |
+| **B-04** | `04_l2_residency.cu` | L2 residency | — |
+| **B-05** | `05_unified_memory_pf.cu` + `05_profile_*.sh` | UM fault/prefetch/advise | `docs/results/B-05_*`；`python scripts/plot_b05_unified_memory.py` |
+| **B-06** | `06_pinned_dma.cu` + `06_profile_*.sh` | Pinned / DMA / Overlap | `docs/results/B-06_*`；`python scripts/plot_b06_pinned_dma.py` |
+| **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
 
 ## 🚀 快速开始
 
@@ -377,12 +381,46 @@ nsys profile -o pinned_overlap --force-overwrite true \
 
 ---
 
+### 第 17 章 / B-07：Async Copy / Pipeline (`07_cp_async_pipeline.cu`)
+
+对照设备侧 GMEM→SMEM 路径（需要 sm_80+）：
+
+| mode | 含义 |
+|------|------|
+| `sync` | `gmem→reg→smem` 同步基线 |
+| `async1` | `memcpy_async` + 立刻 wait（无多 stage overlap） |
+| `pipe2` / `pipe4` | thread-local 2/4-stage software pipeline |
+| `pipe2_blk` | block-shared 2-stage pipeline（对照 barrier 开销） |
+| `sweep` | 扫 `fma-iters`，输出 sync/pipe2/pipe4 加速比 CSV |
+
+#### 运行示例
+
+```bash
+./bin/02_memory_optim_07_cp_async_pipeline --mode sync   --fma-iters 8
+./bin/02_memory_optim_07_cp_async_pipeline --mode pipe2  --fma-iters 8
+./bin/02_memory_optim_07_cp_async_pipeline --mode pipe4  --fma-iters 8
+./bin/02_memory_optim_07_cp_async_pipeline --mode sweep
+```
+
+批量跑 + 可选 NCU：
+
+```bash
+bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
+DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
+```
+
+结果回填：`docs/results/B-07_cp_async_pipeline.md`。配套文章：`article/02_memory_optim/B-07*.md`。
+
+---
+
 ## 🔧 工具脚本
 
 - `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析 Global Memory 访问模式和带宽利用率
 - `02_profile_banks.sh`：Shared Memory Bank Conflict 分析脚本（Linux/WSL 专用），使用 Nsight Compute 采集共享内存 Wavefront 等指标，验证 Naive / Padding / Swizzling 的 Bank Conflict 差异
 - `05_profile_unified_memory.sh`：B-05 UM 证据链脚本（Linux/WSL 专用），使用 Nsight Systems 批量采集 fault/prefetch/advise 三组 trace
 - `06_profile_pinned_dma.sh`：B-06 Pinned/DMA 批量对照（可选 `DO_NSYS=1` 采集 overlap 时间线）
+- `07_profile_cp_async_pipeline.sh`：B-07 设备内 async/pipeline 批量对照（可选 `DO_NCU=1`）
+- `07_dump_sass.sh`：B-07 导出 SASS，核对 `LDGSTS` / `CP.ASYNC`
 
 ## 📝 注意事项
 

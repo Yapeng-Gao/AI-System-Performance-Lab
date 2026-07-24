@@ -1,0 +1,8 @@
+mode,median_ms,gbs,label
+pinned,4.769,52.42,pinned
+serial_iters8,5.123,48.80,serial (iters=8)
+overlap_iters8,4.808,51.99,overlap (iters=8)
+serial_iters256,5.331,46.90,serial (iters=256)
+overlap_iters256,4.819,51.87,overlap (iters=256)
+bidir,5.336,93.70,bidir
+mapped,5.234,47.76,mapped

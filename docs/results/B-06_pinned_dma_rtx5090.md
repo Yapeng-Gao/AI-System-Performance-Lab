@@ -8,6 +8,7 @@
 - 载荷：256 MiB；chunk=16 MiB；`warmup=1`，`runs=5`
 - 口径：median（除非另注）
 - 可执行文件：`02_memory_optim_06_pinned_dma`
+- 封面：`article/02_memory_optim/assets/B-06-pinned-dma-cover.png`
 
 ## 结果摘要
 
@@ -21,6 +22,12 @@
 | `bidir` | 5.336 | 93.70 | ≈ 1.79× 单向 |
 | `mapped` | 5.234 | 47.76 | 单遍 host-read 有效带宽 |
 
+CSV：[`B-06_modes.csv`](B-06_modes.csv)、[`B-06_overlap.csv`](B-06_overlap.csv)
+
+![B-06 mode GB/s](../../article/02_memory_optim/assets/B-06-mode-gbs-bars.png)
+
+![B-06 overlap median](../../article/02_memory_optim/assets/B-06-overlap-median-bars.png)
+
 ## NSYS CLI 旁证（overlap，iters=256）
 
 - 96 × H2D @ 16.777 MB；memcpy med ≈ 298 µs
@@ -31,4 +38,5 @@
 
 ```bash
 bash examples/02_memory_optim/06_profile_pinned_dma.sh
+python scripts/plot_b06_pinned_dma.py
 ```

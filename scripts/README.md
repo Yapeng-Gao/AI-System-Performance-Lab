@@ -1,34 +1,43 @@
 # 脚本工具
 
-本目录包含各种辅助脚本工具。
+本目录包含辅助脚本。章节专用 profile 脚本在 `examples/**` 同目录；这里放**跨章复用**与**正文数据图重画**。
 
 ## 已提供的脚本
 
-- `dump_sass.sh`        ：为 benchmarks 下的核心基准生成 cubin + SASS（按 sm_80/90/100）
-- `profile_ncu.sh`      ：用 Nsight Compute 采集带宽/算力/指令等指标，输出 CSV 到 `docs/results/ncu`
-- `profile_ncu_l2_residency.sh`：采集示例 `02_memory_optim_04_l2_residency` 的 L2/DRAM 证据三件套（输出 CSV 到 `docs/results/ncu`
-- `parse_roofline.py`   ：解析 NCU CSV，计算带宽 / TFLOPs / OI
-- `plot_roofline.py`    ：根据 JSON + 硬件屋顶线数据绘制 Roofline 图
+### 正文实测图（B-05～B-07，改 CSV 后重跑）
 
-## 使用说明
+| 脚本 | 输入 CSV | 输出 PNG（`article/02_memory_optim/assets/`） |
+|------|----------|-----------------------------------------------|
+| `plot_b05_unified_memory.py` | `docs/results/B-05_modes_warm.csv`、`B-05_cold_fault.csv` | `B-05-mode-latency-bars.png`、`B-05-cold-vs-warm.png` |
+| `plot_b06_pinned_dma.py` | `docs/results/B-06_modes.csv`、`B-06_overlap.csv` | `B-06-mode-gbs-bars.png`、`B-06-overlap-median-bars.png` |
+| `plot_b07_cp_async.py` | `docs/results/B-07_sweep.csv`、`B-07_modes.csv` | `B-07-speedup-vs-fma.png`、`B-07-mode-speedup-bars.png` |
 
 ```bash
-# 1) 确保基准可执行已构建 (位于 build/bin)
-cd build
-cmake --build . --parallel
+# 仓库根目录；需 matplotlib
+python scripts/plot_b05_unified_memory.py
+python scripts/plot_b06_pinned_dma.py
+python scripts/plot_b07_cp_async.py
+```
 
-# 2) 导出 SASS
-cd ..
-chmod +x scripts/*.sh
+### 通用 profiling / Roofline
+
+- `dump_sass.sh` — 对部分 `examples/02_memory_optim/*.cu` 导出 SASS 到 `docs/sass/`（章节也可用同目录 `0N_dump_sass.sh`）
+- `profile_ncu.sh` — NCU 采集，输出 CSV 到 `docs/results/ncu`（目录按需创建）
+- `profile_ncu_l2_residency.sh` — L2 residency 证据三件套
+- `parse_roofline.py` — 解析 NCU CSV → 带宽 / TFLOPs / OI
+- `plot_roofline.py` — 根据 JSON + 硬件屋顶线画图
+
+> 专栏主线实验优先用 `examples/**/0N_profile_*.sh`。
+
+## 使用说明（Roofline 链路）
+
+```bash
+cd build && cmake --build . --parallel && cd ..
+chmod +x scripts/*.sh   # Linux
 ./scripts/dump_sass.sh
-
-# 3) 采集 NCU 指标（需要 Nsight Compute CLI）
 ./scripts/profile_ncu.sh
-
-# 4) 解析单个 NCU CSV
-python scripts/parse_roofline.py docs/results/ncu/bench_cp_async_pipeline.csv
-
-# 5) 绘制 Roofline 图
+python scripts/parse_roofline.py docs/results/ncu/<file>.csv
 python scripts/plot_roofline.py data.json "GPU-Name" <BW_GBps> <TFLOPs_peak> output.png
 ```
 
+目录用途总览见 [`docs/仓库架构与现状.md`](../docs/仓库架构与现状.md)。
