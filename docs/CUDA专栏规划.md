@@ -11,8 +11,9 @@
 **仓库落地路径**：
 
 - **正文文章**：`article/`
-- **可运行示例（章节实验代码）**：`examples/`
-- **微基准与数据采集链路**：`benchmarks/` + `scripts/` + `docs/results/`
+- **可运行示例（章节实验代码）**：`examples/`（主产物；CMake 自动扫描）
+- **实测与绘图**：`docs/results/`（CSV/摘要）+ `scripts/plot_b0N_*.py` → `article/**/assets/`
+- **目录结构**：[`docs/仓库架构与现状.md`](仓库架构与现状.md)（仓库已瘦身为 `article/` + `examples/` 主线）
 
 **状态约定**：
 
@@ -20,13 +21,15 @@
 - 🟡 部分落地：文章/代码有其一，或为占位实现
 - ⏳ 规划中：仅大纲，仓库暂无对应实现
 
+**正文插图约定（B-05 起定稿）**：原理 / 时间线用短 **ASCII**；实测用 **matplotlib**（可复现）；封面可选。不再把信息过载的 AI 教学海报当正文原理图。
+
 ---
 
 ## 1. 目录总览（Module A–E）
 
-- **Module A（1–10）CUDA 基础与 GPU 架构**：✅（文章/示例已落地）
-- **Module B（11–20）内存体系与访存优化**：🟡（11–17 / B-01～B-07 文章+示例已落地，B-07 实测表待本机回填；18–20 规划中）
-- **Module C（21–30）核心编程技巧与并发原语**：⏳（规划中）
+- **Module A（1–10）CUDA 基础与 GPU 架构**：✅（文章/示例已落地；封面已加）
+- **Module B（11–20）内存体系与访存优化**：🟡（11–17 / B-01～B-07 文章+示例+实测已落地；18–20 规划中）
+- **Module C（21–30）核心编程技巧与并发原语**：⏳（规划中；`examples/03_*` 仅 README）
 - **Module D（31–40）计算原语与高级算子实现**：⏳（规划中）
 - **Module E（41–50）深度学习工程实战与系统集成**：⏳（规划中；仓库 Python/绑定为占位）
 
@@ -74,15 +77,16 @@
 | 12 | **B-02** | Shared Memory：Bank / Padding / Swizzle | `article/02_memory_optim/B-02*.md` ✅ | `examples/02_memory_optim/02_shared_mem_bank_conflict.cu` ✅ |
 | 13 | **B-03** | 寄存器压力与 Spilling / Occupancy | `article/02_memory_optim/B-03*.md` ✅ | `examples/02_memory_optim/03_register_spill.cu` ✅ |
 | 14 | **B-04** | L2 Cache 行为与 Residency | `article/02_memory_optim/B-04*.md` ✅ | `examples/02_memory_optim/04_l2_residency.cu` ✅ |
-| 15 | **B-05** | Unified Memory：Page Fault / Prefetch / Advise | `article/02_memory_optim/B-05*.md` ✅ | `examples/02_memory_optim/05_unified_memory_pf.cu` ✅（含 `05_profile_unified_memory.sh`） |
-| 16 | **B-06** | Pinned Memory 与 DMA：H2D/D2H 吞吐与 Overlap | `article/02_memory_optim/B-06*.md` ✅ | `examples/02_memory_optim/06_pinned_dma.cu` ✅ |
-| 17 | **B-07** | Async Copy / Pipeline：GMEM→SMEM 藏延迟边界 | `article/02_memory_optim/B-07*.md` ✅ | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ |
+| 15 | **B-05** | Unified Memory：Page Fault / Prefetch / Advise | `article/02_memory_optim/B-05*.md` ✅ | `examples/02_memory_optim/05_unified_memory_pf.cu` ✅ + `docs/results/B-05_*` + `scripts/plot_b05_unified_memory.py` |
+| 16 | **B-06** | Pinned Memory 与 DMA：H2D/D2H 吞吐与 Overlap | `article/02_memory_optim/B-06*.md` ✅ | `examples/02_memory_optim/06_pinned_dma.cu` ✅ + `docs/results/B-06_*` + `scripts/plot_b06_pinned_dma.py` |
+| 17 | **B-07** | Async Copy / Pipeline：GMEM→SMEM 藏延迟边界 | `article/02_memory_optim/B-07*.md` ✅ | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ + `docs/results/B-07_*` + `scripts/plot_b07_cp_async.py` |
 
-> 编号约定：规划总序号 11–20 与 Module B 内文件编号 B-01～B-10 一一对应（11↔B-01 … 17↔B-07）。
+> 编号约定：规划总序号 11–20 与 Module B 内文件编号 B-01～B-10 一一对应（11↔B-01 … 17↔B-07）。  
+> B-05～B-07 正文：**ASCII 讲原理**，**matplotlib 讲实测**；详见 [`仓库架构与现状.md`](仓库架构与现状.md) §4。
 
 ### 3.2 规划中章节（18–20）⏳（建议“先落地最小可复现实验”）
 
-为了与仓库现有 `benchmarks/` + `scripts/` 的数据链路形成闭环，建议 18–20 以**工程索引型**方式落地：每篇至少给一个可运行 micro-bench + 可复现指标（NCU/NSYS/SASS 三选一；设备内 async 优先 NCU）。
+建议 18–20 以**工程索引型**方式落地：每篇至少一个 `examples/02_memory_optim/0N_*.cu` + `docs/results/` 指标（NCU/NSYS/SASS 三选一；设备内 async 优先 NCU）。
 
 - **可运行 micro-bench**
 - **NCU/NSYS 指标采集脚本入口**
@@ -109,9 +113,11 @@
 #### 3.2.3 B-06 写作大纲（Pinned / DMA / Overlap）✅ 已落地
 
 > **已交付**：
-> - 正文：`article/02_memory_optim/B-06*.md`（含原理图、RTX 5090 实测、NSYS CLI 旁证）
+> - 正文：`article/02_memory_optim/B-06*.md`（ASCII 原理 + RTX 5090 实测表/图、NSYS CLI 旁证）
 > - 封面：`article/02_memory_optim/assets/B-06-pinned-dma-cover.png`
+> - 实测图：`B-06-mode-gbs-bars.png` / `B-06-overlap-median-bars.png`（`scripts/plot_b06_pinned_dma.py`）
 > - 示例：`examples/02_memory_optim/06_pinned_dma.cu` + `06_profile_pinned_dma.sh`
+> - 结果：`docs/results/B-06_pinned_dma_rtx5090.md` + CSV
 >
 > 下方保留大纲便于对照审稿；以正文为准。
 
@@ -165,12 +171,13 @@
 - 新 API：CUDA 12.8+ [`cudaMemcpyBatchAsync`](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-host-programming.html)
 - 近年研究/工程：Grace Hopper system memory（[ICPP’24 / arXiv:2407.07850](https://arxiv.org/abs/2407.07850)）、MultiPath H2D（[arXiv:2512.16056](https://arxiv.org/abs/2512.16056)）、PCIe Gen5/NUMA 实测（nvbandwidth 类工具链）
 
-#### 3.2.4 B-07 写作大纲（Async Copy / Pipeline）✅ 文章+示例已落地（实测待回填）
+#### 3.2.4 B-07 写作大纲（Async Copy / Pipeline）✅ 文章+示例+实测已落地
 
 > **已交付**：
-> - 正文：`article/02_memory_optim/B-07*.md`（含 RTX 5090 高 AI sweep + NCU WarpStateStats 定性）
-> - 示例：`examples/02_memory_optim/07_cp_async_pipeline.cu` + `07_profile_cp_async_pipeline.sh`
-> - 结果：`docs/results/B-07_cp_async_pipeline.md`（低 AI 段可继续追加）
+> - 正文：`article/02_memory_optim/B-07*.md`（ASCII 原理 + RTX 5090 完整 intensity sweep + NCU WarpStateStats + SASS 旁证）
+> - 示例：`examples/02_memory_optim/07_cp_async_pipeline.cu` + `07_profile_cp_async_pipeline.sh` + `07_dump_sass.sh`
+> - 结果：`docs/results/B-07_cp_async_pipeline.md` + `B-07_sweep.csv` / `B-07_modes.csv`
+> - 实测图：`B-07-speedup-vs-fma.png` / `B-07-mode-speedup-bars.png`（`scripts/plot_b07_cp_async.py`）
 >
 > 路线：**Ampere-first 多级流水线（优先 thread-local / unified）+ arithmetic intensity 扫描**；TMA 整章交给 B-08；warp specialization / CUTLASS Pipeline 仅扩展阅读。
 
@@ -216,7 +223,7 @@
 | E | 扫 compute intensity（FMA 次数或等价 AI） | 画出「加速比 vs AI」：低 AI 受益、高 AI 持平/变慢？ |
 | F（可选） | thread-local vs block shared pipeline | shared pipeline 的 barrier 开销是否可测？ |
 
-**证据最低要求**：CUDA event 得到 median 时延或有效带宽；**intensity 扫表**写入 `docs/results/`（主结论载体）。旁证：NCU 至少一组 A vs C/D（关注 `long_scoreboard` 下降、`mio_throttle`、或 sm vs dram 吞吐）。可选：SASS 确认出现 `LDGSTS` / `CP.ASYNC`。现有 `benchmarks/cp_async_pipeline.cu` 仅作骨架，落地时需补 sync 基线、计时与 intensity 扫描。
+**证据最低要求**：CUDA event 得到 median 时延或有效带宽；**intensity 扫表**写入 `docs/results/`（主结论载体）。旁证：NCU 至少一组 A vs C/D（关注 `long_scoreboard` 下降、`mio_throttle`、或 sm vs dram 吞吐）。可选：SASS 确认出现 `LDGSTS` / `CP.ASYNC`。完整对照见已落地的 `examples/02_memory_optim/07_cp_async_pipeline.cu`。
 
 **参考文献池（与正文参考文献节对齐）**
 
@@ -261,30 +268,30 @@
 
 ### 6.1 与仓库现状的对齐（重要）
 
-总规划中写了 `examples/05_dl_engineering/41_fusion_template/ ...` 的完整树，但仓库目前尚未落地该目录；同时 `python/csrc/module.cpp` 与 `include/aspl/ops/ops.h` 仍是占位。
+总规划中写了 `examples/05_dl_engineering/...` / Python 绑定等完整树；**当前仓库已删除占位 `python/`、`include/`、`src/`**，Module E 仅保留规划文档。
 
-因此建议在本专栏中对 41–50 明确标注：
+对 41–50 明确标注：
 
 - **“规划中：目录/代码尚未落地”**
-- 每落地一篇，再补上对应路径（文章/示例/脚本）
+- 每落地一篇，再新建对应路径（文章/示例/脚本）
 
 ---
 
 ## 7. 本仓库的 CUDA Bench & Profiling 闭环（建议读者必跑）
 
-### 7.1 基准（当前已存在）✅/🟡
+### 7.1 章节实验（主入口）✅
 
-- `benchmarks/hbm_pointer_chasing.cu`：HBM pointer chasing 下限（带宽墙）
-- `benchmarks/cp_async_pipeline.cu`：异步搬运流水线骨架（完整对照见 `examples/02_memory_optim/07_cp_async_pipeline.cu`）
-- `benchmarks/attention_memory_bound.cu`：attention 形态的 memory/compute 交织示例
-- `benchmarks/bench_flash_attn.cu`：NVBench 流程样例（当前为 mock 占位实现）🟡
+- `examples/01_cuda_basics/*.cu`：Module A
+- `examples/02_memory_optim/01_*.cu` … `07_*.cu`：Module B（含 B-07 intensity sweep）
+- 实测摘要：`docs/results/B-05_*` / `B-06_*` / `B-07_*`
 
 ### 7.2 脚本与结果目录 ✅
 
-- `scripts/dump_sass.sh` → `docs/sass/`：导出不同 SM 架构下的 SASS
-- `scripts/profile_ncu.sh` → `docs/results/ncu/`：采集 NCU CSV
-- `scripts/parse_roofline.py`：从 CSV 推导 BW/TFLOPs/OI（Roofline 打点基础）
-- `docs/results/perf_table.md`：对比表（可作为后续自动汇总输出）
+- `scripts/plot_b05_unified_memory.py` / `plot_b06_pinned_dma.py` / `plot_b07_cp_async.py`：正文实测图
+- `scripts/dump_sass.sh` → `docs/sass/`（可选；章节也可用 `examples/**/0N_dump_sass.sh`）
+- `scripts/profile_ncu.sh` → `docs/results/ncu/`（按需）
+- `scripts/parse_roofline.py` / `plot_roofline.py`：Roofline 辅助
+- `docs/results/perf_table.md`：对比表占位
 
 ---
 

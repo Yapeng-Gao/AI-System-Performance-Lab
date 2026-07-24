@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 针对 benchmarks 目录下的单文件基准，直接用 nvcc 编出 cubin 后 nvdisasm
+# 为 examples 下若干关键 .cu 直接 nvcc→cubin→nvdisasm
+# 章节专用 dump 优先用 examples/02_memory_optim/07_dump_sass.sh 等
+
 ARCHS=("80" "90" "100")
 ARCH_NAMES=("ampere" "hopper" "blackwell")
 
 SOURCES=(
-  "benchmarks/attention_memory_bound.cu"
-  "benchmarks/cp_async_pipeline.cu"
-  "benchmarks/hbm_pointer_chasing.cu"
+  "examples/02_memory_optim/01_global_mem_bandwidth.cu"
+  "examples/02_memory_optim/07_cp_async_pipeline.cu"
 )
 
 OUT_DIR="docs/sass"

@@ -1,18 +1,21 @@
 # Module B: 内存优化
 
-本目录包含 CUDA 内存优化相关的示例代码，是《AI 系统性能工程》专栏 Module B 的配套实战代码。
+本目录是专栏 Module B 的配套实验代码。正文在 `article/02_memory_optim/`。  
+仓库整体目录用途见 [`docs/仓库架构与现状.md`](../../docs/仓库架构与现状.md)。
 
-## 📚 目录
+**正文插图**：原理用短 ASCII；B-05～B-07 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
 
-| 章节 | 文件 | 核心内容 | 知识点 |
-|------|------|----------|--------|
-| **第 11 章** | `01_global_mem_bandwidth.cu` | Global Memory 极致优化 | 物理层（对齐）、指令层（向量化/Async Copy）、缓存层（LDG.NT/L2 驻留） |
-| **第 12 章** | `02_shared_mem_bank_conflict.cu` | Shared Memory Bank Conflict 分析 | Bank Conflict、Padding、XOR Swizzling |
-| **第 13 章** | `03_register_spill.cu` | Register Spilling 与 Occupancy 取舍 | 寄存器压力、local spill、`launch_bounds`、编译日志对比 |
-| **第 14 章 / B-04** | `04_l2_residency.cu` | L2 Residency 控制与 Thrashing 复现 | set-aside、access policy window、hitRatio、reset、可复现实验口径 |
-| **第 15 章 / B-05** | `05_unified_memory_pf.cu` | Unified Memory 的 fault/prefetch/advise 对照 | 首轮抖动、迁移干扰、first/median/p95 统计口径 |
-| **第 16 章 / B-06** | `06_pinned_dma.cu` | Pinned / DMA / Overlap 吞吐边界 | pageable vs pinned、serial vs overlap、双向 CE、mapped zero-copy |
-| **第 17 章 / B-07** | `07_cp_async_pipeline.cu` | 设备内 Async Copy / Pipeline | sync vs async1 vs pipe2/4、intensity sweep、thread-local vs block pipeline |
+## 目录
+
+| 章节 | 文件 | 核心内容 | 结果 / 重画 |
+|------|------|----------|-------------|
+| **B-01** | `01_global_mem_bandwidth.cu` | Global Memory | — |
+| **B-02** | `02_shared_mem_bank_conflict.cu` | Shared Bank / Swizzle | — |
+| **B-03** | `03_register_spill.cu` | Register spill / Occupancy | — |
+| **B-04** | `04_l2_residency.cu` | L2 residency | — |
+| **B-05** | `05_unified_memory_pf.cu` + `05_profile_*.sh` | UM fault/prefetch/advise | `docs/results/B-05_*`；`python scripts/plot_b05_unified_memory.py` |
+| **B-06** | `06_pinned_dma.cu` + `06_profile_*.sh` | Pinned / DMA / Overlap | `docs/results/B-06_*`；`python scripts/plot_b06_pinned_dma.py` |
+| **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
 
 ## 🚀 快速开始
 

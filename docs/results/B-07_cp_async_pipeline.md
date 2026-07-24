@@ -39,20 +39,10 @@ fma_iters,sync_ms,pipe2_ms,pipe4_ms,speedup_pipe2,speedup_pipe4
 | 128 | 0.088960 | 0.089824 | 0.093056 | 0.990 | 0.956 |
 | 256 | 0.163488 | 0.170752 | 0.173792 | 0.958 | 0.941 |
 
-```text
-speedup_pipe2
+CSV：[`B-07_sweep.csv`](B-07_sweep.csv)  
+图：[`../../article/02_memory_optim/assets/B-07-speedup-vs-fma.png`](../../article/02_memory_optim/assets/B-07-speedup-vs-fma.png)
 
- 1.32 ┤    ●4
- 1.27 ┤ ●1
- 1.15 ┤  ●2
- 1.12 ┤     ●8
- 1.09 ┤      ●16
- 1.06 ┤       ●32
- 1.04 ┤        ●64
- 1.00 ┤──────────●128── 盈亏线
- 0.96 ┤             ●256
-      └──────────────────► fma_iters
-```
+![B-07 speedup vs fma_iters](../../article/02_memory_optim/assets/B-07-speedup-vs-fma.png)
 
 ## 固定 mode（裸跑，`fma_iters=8`）
 
@@ -63,6 +53,11 @@ speedup_pipe2
 | `pipe2` | 0.0193 | 811.10 | **1.10×** | 本组最佳 |
 | `pipe4` | 0.0202 | 773.82 | **1.05×** | 快于 sync，差于 pipe2 |
 | `pipe2_blk` | 0.0207 | 754.69 | **1.03×** | shared pipeline 税 |
+
+CSV：[`B-07_modes.csv`](B-07_modes.csv)  
+图：[`../../article/02_memory_optim/assets/B-07-mode-speedup-bars.png`](../../article/02_memory_optim/assets/B-07-mode-speedup-bars.png)
+
+![B-07 mode speedup bars](../../article/02_memory_optim/assets/B-07-mode-speedup-bars.png)
 
 ## NCU 旁证（WarpStateStats，`fma_iters=4`，`kernel_sync`）
 
@@ -101,4 +96,7 @@ done
 
 ncu --launch-skip 2 --launch-count 1 --section WarpStateStats --section MemoryWorkloadAnalysis -o cp_async_sync ./bin/02_memory_optim_07_cp_async_pipeline --mode sync --fma-iters 4 --runs 1 --warmup 2
 bash examples/02_memory_optim/07_dump_sass.sh
+
+# 更新 CSV 后重画正文/结果图
+python scripts/plot_b07_cp_async.py
 ```

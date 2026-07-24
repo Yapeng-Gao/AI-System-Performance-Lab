@@ -27,11 +27,11 @@ macro(create_cuda_example target_name source_file)
     string(FIND "${source_content}" "aspl/" found_aspl_header)
     string(FIND "${source_content}" "#include.*aspl" found_aspl_include)
 
-    if(found_aspl_header GREATER_EQUAL 0 OR found_aspl_include GREATER_EQUAL 0)
+    if((found_aspl_header GREATER_EQUAL 0 OR found_aspl_include GREATER_EQUAL 0) AND TARGET aspl_core)
         target_link_libraries(${target_name} PRIVATE aspl_core)
         message(STATUS "[Example] ${target_name}: Linked with aspl_core")
     else()
-        # 基础 CUDA 运行时 (使用 Modern CMake Target)
+        # 专栏示例默认只链 CUDA Runtime（仓库已去掉占位 aspl_core）
         target_link_libraries(${target_name} PRIVATE CUDA::cudart)
     endif()
 
