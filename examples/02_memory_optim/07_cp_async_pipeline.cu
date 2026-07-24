@@ -190,7 +190,10 @@ __global__ void kernel_pipe2_blk(const float* __restrict__ in, float* __restrict
                                  int tiles_per_block, int fma_iters) {
   extern __shared__ float smem[];
   constexpr int STAGES = 2;
+  // CUDA 13+: function-scope __shared__ 对象禁止动态初始化；抑制该诊断即可（与 CCCL 示例一致）
+#pragma nv_diag_suppress static_var_with_dynamic_init
   __shared__ cuda::pipeline_shared_state<cuda::thread_scope_block, STAGES> pipe_state;
+#pragma nv_diag_default static_var_with_dynamic_init
 
   const int tid = threadIdx.x;
   const int tile_stride = gridDim.x * blockDim.x;

@@ -1,3 +1,5 @@
+![B-03 封面：Register Spilling 与 Occupancy](assets/B-03-register-spill-cover.png)
+
 # 13. 寄存器管理：Register Spilling 与 Occupancy 的终极博弈
 
 GPU 编程中常出现一个反直觉的现象：你为了让逻辑更清晰，展开了一个循环或提取了几个中间变量，逻辑没变，性能却突然暴跌 50%。打开 Nsight Compute，显存带宽未满，Shared Memory 也未见冲突。此时，真正的瓶颈往往隐藏在一行不起眼的编译日志里——**Register Spilling（寄存器溢出）**。
