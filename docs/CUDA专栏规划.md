@@ -76,7 +76,7 @@
 | 14 | **B-04** | L2 Cache 行为与 Residency | `article/02_memory_optim/B-04*.md` ✅ | `examples/02_memory_optim/04_l2_residency.cu` ✅ |
 | 15 | **B-05** | Unified Memory：Page Fault / Prefetch / Advise | `article/02_memory_optim/B-05*.md` ✅ | `examples/02_memory_optim/05_unified_memory_pf.cu` ✅（含 `05_profile_unified_memory.sh`） |
 | 16 | **B-06** | Pinned Memory 与 DMA：H2D/D2H 吞吐与 Overlap | `article/02_memory_optim/B-06*.md` ✅ | `examples/02_memory_optim/06_pinned_dma.cu` ✅ |
-| 17 | **B-07** | Async Copy / Pipeline：GMEM→SMEM 藏延迟边界 | `article/02_memory_optim/B-07*.md` ✅（实测表待回填） | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ |
+| 17 | **B-07** | Async Copy / Pipeline：GMEM→SMEM 藏延迟边界 | `article/02_memory_optim/B-07*.md` ✅ | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ |
 
 > 编号约定：规划总序号 11–20 与 Module B 内文件编号 B-01～B-10 一一对应（11↔B-01 … 17↔B-07）。
 
@@ -92,7 +92,7 @@
 
 | 篇章 | 工程索引型标题（建议） | 最小可复现实验（MVP） | 证据/指标（最低要求） | 代码落点 |
 |---|---|---|---|---|
-| 17 / **B-07** ✅ | Async Copy / Pipeline：GMEM→SMEM 何时能藏延迟，何时反而变慢 | sync load vs `memcpy_async` / `cuda::pipeline`；扫 compute intensity（**设备侧** GMEM→SMEM，不重复 B-06 Host↔Device）；对照 2/4-stage | CUDA event 加速比 vs AI 曲线；NCU：`long_scoreboard` / `mio_throttle` 或 sm vs dram | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅（`docs/results/B-07_*.md` 待本机回填） |
+| 17 / **B-07** ✅ | Async Copy / Pipeline：GMEM→SMEM 何时能藏延迟，何时反而变慢 | sync load vs `memcpy_async` / `cuda::pipeline`；扫 compute intensity（**设备侧** GMEM→SMEM，不重复 B-06 Host↔Device）；对照 2/4-stage | CUDA event 加速比 vs AI 曲线；NCU：WarpStateStats（sm_120 上部分 legacy 指标可能 n/a） | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ + `docs/results/B-07_cp_async_pipeline.md` ✅ |
 | 18 / **B-08** | Hopper TMA（可选）：从 API 到吞吐瓶颈（需要硬件门槛） | 最小 TMA copy + 计算模板（若覆盖） | 以 SASS/NCU 证据为主 | `examples/02_memory_optim/08_tma_intro.cu`（可选） |
 | 19 / **B-09** | 数据布局（AoS/SoA/Transpose）：一次布局调整带来的事务变化 | AoS vs SoA + transpose micro-bench | NCU：dram 吞吐 +（可选）sectors/request 类指标 | `examples/02_memory_optim/09_layout_transform.cu`（建议新增） |
 | 20 / **B-10** | Module B Checklist：从“症状”到“证据”到“处方”的统一表 | 汇总 11–19 的实验结论与常见坑 | 输出 1 页 checklist + 对应 benchmark/脚本入口 | `docs/CUDA专栏规划.md`（本文件）+ `docs/results/` |
@@ -168,9 +168,9 @@
 #### 3.2.4 B-07 写作大纲（Async Copy / Pipeline）✅ 文章+示例已落地（实测待回填）
 
 > **已交付**：
-> - 正文：`article/02_memory_optim/B-07*.md`
+> - 正文：`article/02_memory_optim/B-07*.md`（含 RTX 5090 高 AI sweep + NCU WarpStateStats 定性）
 > - 示例：`examples/02_memory_optim/07_cp_async_pipeline.cu` + `07_profile_cp_async_pipeline.sh`
-> - 结果模板：`docs/results/B-07_cp_async_pipeline.md`（本机跑 `sweep` 后回填）
+> - 结果：`docs/results/B-07_cp_async_pipeline.md`（低 AI 段可继续追加）
 >
 > 路线：**Ampere-first 多级流水线（优先 thread-local / unified）+ arithmetic intensity 扫描**；TMA 整章交给 B-08；warp specialization / CUTLASS Pipeline 仅扩展阅读。
 

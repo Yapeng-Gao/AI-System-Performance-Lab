@@ -61,12 +61,18 @@ if [[ "${DO_NCU}" == "1" ]]; then
     echo "WARNING: ncu not found; skip profiling." >&2
     exit 0
   fi
+  # 不要用 --set full：会污染程序自身的 event 计时；看 section 即可
   OUT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  ncu --set full -o "${OUT_DIR}/cp_async_sync" --force-overwrite \
+  ncu --launch-skip 2 --launch-count 1 \
+    --section WarpStateStats --section MemoryWorkloadAnalysis \
+    -o "${OUT_DIR}/cp_async_sync" --force-overwrite \
     "${BIN}" --mode sync --n "${N}" --tiles "${TILES}" --block "${BLOCK}" \
-    --fma-iters 4 --runs 1 --warmup 0 --device "${DEVICE}"
-  ncu --set full -o "${OUT_DIR}/cp_async_pipe2" --force-overwrite \
+    --fma-iters 4 --runs 1 --warmup 2 --device "${DEVICE}"
+  ncu --launch-skip 2 --launch-count 1 \
+    --section WarpStateStats --section MemoryWorkloadAnalysis \
+    -o "${OUT_DIR}/cp_async_pipe2" --force-overwrite \
     "${BIN}" --mode pipe2 --n "${N}" --tiles "${TILES}" --block "${BLOCK}" \
-    --fma-iters 4 --runs 1 --warmup 0 --device "${DEVICE}"
+    --fma-iters 4 --runs 1 --warmup 2 --device "${DEVICE}"
   echo "Wrote ${OUT_DIR}/cp_async_sync.ncu-rep and cp_async_pipe2.ncu-rep"
+  echo "NOTE: ignore the binary's printed median/GB/s while ncu is attached; use: ncu --import ... --page details"
 fi
