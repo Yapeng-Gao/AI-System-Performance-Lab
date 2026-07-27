@@ -16,7 +16,7 @@
 | **B-05** | `05_unified_memory_pf.cu` + `05_profile_*.sh` | UM fault/prefetch/advise | `docs/results/B-05_*`；`python scripts/plot_b05_unified_memory.py` |
 | **B-06** | `06_pinned_dma.cu` + `06_profile_*.sh` | Pinned / DMA / Overlap | `docs/results/B-06_*`；`python scripts/plot_b06_pinned_dma.py` |
 | **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
-| **B-08** | `08_tma_intro.cu` + profile/dump 脚本 | Hopper+ TMA bulk / tensor-map（**sm_90+**） | `docs/results/B-08_*`；`python scripts/plot_b08_tma.py` |
+| **B-08** | `08_tma_intro.cu` | Hopper+ TMA bulk / tensor-map（**sm_90+**） | `docs/results/B-08_*`；`python scripts/plot_b08_tma.py` |
 
 ## 🚀 快速开始
 
@@ -430,23 +430,18 @@ DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
 
 ```bash
 # 建议：-DCMAKE_CUDA_ARCHITECTURES=120（RTX 5090）或 90（H100）
-./bin/02_memory_optim_08_tma_intro --mode sync     --fma-iters 8
-./bin/02_memory_optim_08_tma_intro --mode bulk1d   --fma-iters 8
-./bin/02_memory_optim_08_tma_intro --mode tensor2d --fma-iters 8
-./bin/02_memory_optim_08_tma_intro --mode pipe2    --fma-iters 8
+# 主证据一条即可：
 ./bin/02_memory_optim_08_tma_intro --mode sweep
+
+# 可选：单 mode 对照
+./bin/02_memory_optim_08_tma_intro --mode sync   --fma-iters 8
+./bin/02_memory_optim_08_tma_intro --mode pipe2  --fma-iters 8
+
+# 有 CSV 后重画：
+python scripts/plot_b08_tma.py
 ```
 
-批量跑 + 可选 NCU / SASS：
-
-```bash
-bash examples/02_memory_optim/08_profile_tma.sh
-DO_NCU=1 bash examples/02_memory_optim/08_profile_tma.sh
-bash examples/02_memory_optim/08_dump_sass.sh
-python scripts/plot_b08_tma.py   # 需先写好 docs/results/B-08_*.csv
-```
-
-结果模板：`docs/results/B-08_tma.md`。配套文章：`article/02_memory_optim/B-08*.md`。
+结果：`docs/results/B-08_tma.md`。配套文章：`article/02_memory_optim/B-08*.md`。
 
 ---
 
@@ -458,8 +453,6 @@ python scripts/plot_b08_tma.py   # 需先写好 docs/results/B-08_*.csv
 - `06_profile_pinned_dma.sh`：B-06 Pinned/DMA 批量对照（可选 `DO_NSYS=1` 采集 overlap 时间线）
 - `07_profile_cp_async_pipeline.sh`：B-07 设备内 async/pipeline 批量对照（可选 `DO_NCU=1`）
 - `07_dump_sass.sh`：B-07 导出 SASS，核对 `LDGSTS` / `CP.ASYNC`
-- `08_profile_tma.sh`：B-08 TMA 批量对照（可选 `DO_NCU=1`）
-- `08_dump_sass.sh`：B-08 导出 SASS，核对 TMA / BULK 类指令
 
 ## 📝 注意事项
 

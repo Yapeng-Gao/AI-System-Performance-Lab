@@ -104,7 +104,7 @@ python scripts/plot_b07_cp_async.py
 | 模块 | 路径 | 状态 |
 | :--- | :--- | :--- |
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
-| **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | 🟡 B-01～B-08 文+示例 ✅（B-08 实测待 sm_90+）；B-09～B-10 ⏳ |
+| **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | 🟡 B-01～B-08 ✅；B-09～B-10 ⏳ |
 | **Module C–E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。

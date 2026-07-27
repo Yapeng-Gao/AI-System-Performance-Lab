@@ -97,7 +97,7 @@
 | 篇章 | 工程索引型标题（建议） | 最小可复现实验（MVP） | 证据/指标（最低要求） | 代码落点 |
 |---|---|---|---|---|
 | 17 / **B-07** ✅ | Async Copy / Pipeline：GMEM→SMEM 何时能藏延迟，何时反而变慢 | sync load vs `memcpy_async` / `cuda::pipeline`；扫 compute intensity（**设备侧** GMEM→SMEM，不重复 B-06 Host↔Device）；对照 2/4-stage | CUDA event 加速比 vs AI 曲线；NCU：WarpStateStats（sm_120 上部分 legacy 指标可能 n/a） | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ + `docs/results/B-07_cp_async_pipeline.md` ✅ |
-| 18 / **B-08** | Hopper TMA：从单线程 Bulk Copy 到吞吐墙（何时该上、何时别上） | 1D `cp.async.bulk` + 2D tensor-map G2S + intensity 扫；对照 sync（**sm_90+**，实测机 RTX 5090） | CUDA event 带宽/加速比；SASS/NCU 旁证（有工具再做） | `examples/02_memory_optim/08_tma_intro.cu` ✅；实测表 ⏳ |
+| 18 / **B-08** | Hopper TMA：从单线程 Bulk Copy 到吞吐墙（何时该上、何时别上） | 1D bulk + 2D tensor-map + pipe2 + intensity 扫（**sm_90+**，RTX 5090 ✅） | CUDA event 加速比曲线；可选 SASS/NCU | `08_tma_intro.cu` ✅ + `docs/results/B-08_*` ✅ |
 | 19 / **B-09** | 数据布局（AoS/SoA/Transpose）：一次布局调整带来的事务变化 | AoS vs SoA + transpose micro-bench | NCU：dram 吞吐 +（可选）sectors/request 类指标 | `examples/02_memory_optim/09_layout_transform.cu`（建议新增） |
 | 20 / **B-10** | Module B Checklist：从“症状”到“证据”到“处方”的统一表 | 汇总 11–19 的实验结论与常见坑 | 输出 1 页 checklist + 对应 benchmark/脚本入口 | `docs/CUDA专栏规划.md`（本文件）+ `docs/results/` |
 
@@ -233,17 +233,16 @@
 - 高质量实证：Svedin et al., *Benchmarking the Nvidia GPU Lineage… with Asynchronous Memory Transfers*（PMBS@SC’21 / [arXiv:2106.04979](https://arxiv.org/abs/2106.04979)）——低 AI 约 1.07–1.35×，高 AI 可至 ~0.95×；Li et al., *Performance Implications of Async Memcpy and UVM*（IISWC’23，[PDF](https://lca.ece.utexas.edu/pubs/Li_IISWC_2023.pdf)）——GMEM→SMEM 非瓶颈时 async 无收益
 - 扩展阅读：Colfax / SIGARCH [Efficient GEMM Kernel Designs with Pipelining](https://research.colfax-intl.com/cutlass-tutorial-design-of-a-gemm-kernel/)；[CUTLASS Pipeline](https://docs.nvidia.com/cutlass/media/docs/cpp/pipeline.html)；MLC.ai [Pipelining GEMM with TMA](https://mlc.ai/modern-gpu-programming-for-mlsys/chapter_gemm_async/index.html)（为 B-08 铺垫）
 
-#### 3.2.5 B-08 写作大纲（Hopper TMA）🟡 正文+示例已落地；5090 实测待填
+#### 3.2.5 B-08 写作大纲（Hopper TMA）✅ 文章+示例+5090 实测已落地
 
 > **已交付**：
-> - 正文：`article/02_memory_optim/B-08*.md` + 封面 `assets/B-08-tma-cover.png`
-> - 示例：`examples/02_memory_optim/08_tma_intro.cu` + `08_profile_tma.sh` + `08_dump_sass.sh`
-> - 结果模板：`docs/results/B-08_tma.md`；绘图：`scripts/plot_b08_tma.py`
+> - 正文：`article/02_memory_optim/B-08*.md` + 封面/实测图
+> - 示例：`examples/02_memory_optim/08_tma_intro.cu`（主命令 `--mode sweep`）
+> - 结果：`docs/results/B-08_tma.md` + `B-08_sweep.csv` / `B-08_modes.csv`
 >
-> **路线**：**Microbench-first（与 B-06/B-07 同构）**——决策表 + intensity 扫描 +（可选）SASS/NCU；不写生产级 GEMM / WGMMA / warp-spec 主循环。
+> **路线**：Microbench-first；不写生产级 GEMM / WGMMA / warp-spec。
 >
-> **硬件门槛**：`sm_90+`（Hopper / Blackwell；系列实测机 **RTX 5090 / sm_120**）。启动时检测 CC，不足则打印清晰错误退出。  
-> **待补**：在 5090 上跑 `08_profile_tma.sh`，写入 `B-08_sweep.csv` / `B-08_modes.csv` 并重画插图。
+> **硬件门槛**：`sm_90+`（实测 RTX 5090 / sm_120）。
 
 **标题**：`B-08. Hopper TMA：从单线程 Bulk Copy 到吞吐墙（何时该上、何时别上）`
 

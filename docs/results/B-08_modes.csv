@@ -1,0 +1,5 @@
+mode,median_ms,speedup_vs_sync
+sync,0.050528,1.0000
+bulk1d,0.050944,0.9918
+tensor2d,0.056608,0.8926
+pipe2,0.040160,1.2582
