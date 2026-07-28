@@ -3,7 +3,7 @@
 本目录是专栏 Module B 的配套实验代码。正文在 `article/02_memory_optim/`。  
 仓库整体目录用途见 [`docs/仓库架构与现状.md`](../../docs/仓库架构与现状.md)。
 
-**正文插图**：原理用短 ASCII；B-05～B-07 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
+**正文插图**：原理用短 ASCII；B-05～B-08 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
 
 ## 目录
 
@@ -16,6 +16,7 @@
 | **B-05** | `05_unified_memory_pf.cu` + `05_profile_*.sh` | UM fault/prefetch/advise | `docs/results/B-05_*`；`python scripts/plot_b05_unified_memory.py` |
 | **B-06** | `06_pinned_dma.cu` + `06_profile_*.sh` | Pinned / DMA / Overlap | `docs/results/B-06_*`；`python scripts/plot_b06_pinned_dma.py` |
 | **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
+| **B-08** | `08_tma_intro.cu` | Hopper+ TMA bulk / tensor-map（**sm_90+**） | `docs/results/B-08_*`；`python scripts/plot_b08_tma.py` |
 
 ## 🚀 快速开始
 
@@ -413,6 +414,37 @@ DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
 
 ---
 
+### 第 18 章 / B-08：Hopper TMA (`08_tma_intro.cu`)
+
+对照设备侧 TMA 路径（需要 **sm_90+** / Hopper 或 Blackwell）：
+
+| mode | 含义 |
+|------|------|
+| `sync` | 协作 sync load 整 tile（公平基线） |
+| `bulk1d` | 1D `memcpy_async_tx` + mbarrier，立刻 wait |
+| `tensor2d` | 2D `cuTensorMapEncodeTiled` + `cp.async.bulk.tensor` |
+| `pipe2` | 2-stage 1D TMA prefetch ∥ compute |
+| `sweep` | 扫 `fma-iters`，输出 sync/bulk1d/tensor2d/pipe2 加速比 CSV |
+
+#### 运行示例
+
+```bash
+# 建议：-DCMAKE_CUDA_ARCHITECTURES=120（RTX 5090）或 90（H100）
+# 主证据一条即可：
+./bin/02_memory_optim_08_tma_intro --mode sweep
+
+# 可选：单 mode 对照
+./bin/02_memory_optim_08_tma_intro --mode sync   --fma-iters 8
+./bin/02_memory_optim_08_tma_intro --mode pipe2  --fma-iters 8
+
+# 有 CSV 后重画：
+python scripts/plot_b08_tma.py
+```
+
+结果：`docs/results/B-08_tma.md`。配套文章：`article/02_memory_optim/B-08*.md`。
+
+---
+
 ## 🔧 工具脚本
 
 - `01_profile_bandwidth.sh`：性能分析脚本（Linux/WSL 专用），使用 Nsight Compute 分析 Global Memory 访问模式和带宽利用率
@@ -427,10 +459,11 @@ DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
 ### CUDA 版本要求
 
 - **最低要求**：CUDA 12.0+（因为使用了 `cuda::pipeline` API）
-- **推荐版本**：CUDA 12.3+ 或 CUDA 13.1+（支持完整特性）
+- **推荐版本**：CUDA 12.3+ 或 CUDA 13.1+（支持完整特性）；B-08 TMA 推荐 12.4+
 - **向后兼容性**：CUDA 13.1 完全向后兼容 CUDA 12.x 的代码和 API
 - **架构要求**：
   - Async Copy Pipeline：需要计算能力 8.0+（Ampere 及以上）
+  - **TMA（B-08）**：需要计算能力 **9.0+**（Hopper / Blackwell）
   - L2 Persistence：需要计算能力 8.0+（Ampere 及以上）
   - LDG.NT：需要计算能力 7.0+（Volta 及以上）
 
