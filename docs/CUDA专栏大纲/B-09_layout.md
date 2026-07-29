@@ -1,11 +1,11 @@
 # B-09 写作大纲：数据布局（AoS/SoA/Transpose）
 
-> 状态：🟡 正文+示例已落地；实测待目标卡。
+> 状态：✅ 文章+示例+RTX 5090 实测已落地。对照审稿用；以正文与 `docs/results/B-09_*` 为准。
 >
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md)
 
-> **已交付**：正文 `article/02_memory_optim/B-09*.md`；示例 `09_layout_transform.cu`；封面/原理图；`scripts/plot_b09_layout.py`；`docs/results/B-09_layout.md`（占位）。  
-> **待办**：目标卡跑 `--mode sweep` / `modes` → 落 CSV → 回填 TL;DR 数字 → `python scripts/plot_b09_layout.py`。
+> **已交付**：正文 `article/02_memory_optim/B-09*.md`；示例 `09_layout_transform.cu`；封面/原理图/实测图；`scripts/plot_b09_layout.py`；`docs/results/B-09_layout.md` + CSV。  
+> **本机要点**：touch=1 SoA/AoS ≈ **13.6×**；touch→8 收窄至 **~1.8×**；tiled/pad ≈ copy 的 **91%/92%**，naive ≈ **39%**。
 >
 > **路线**：Microbench-first——`--mode sweep`（触达字段扫）+ 固定 transpose modes；NCU 可选旁证。
 >

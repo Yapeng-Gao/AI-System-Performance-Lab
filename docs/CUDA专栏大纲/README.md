@@ -7,7 +7,7 @@
 | [B-06_pinned_dma.md](B-06_pinned_dma.md) | ✅ | 已落地；对照审稿 |
 | [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；对照审稿 |
 | [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；对照审稿 |
-| [B-09_layout.md](B-09_layout.md) | 🟡 | 正文+示例 ✅；实测待目标卡 |
+| [B-09_layout.md](B-09_layout.md) | ✅ | 已落地（含 RTX 5090 实测） |
 | [B-10_checklist.md](B-10_checklist.md) | ⏳ | Module B 收束 Checklist |
 | [Module-C.md](Module-C.md) | ⏳ | 并发原语（远期） |
 | [Module-D.md](Module-D.md) | ⏳ | 算子实现（远期） |

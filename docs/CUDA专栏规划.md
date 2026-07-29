@@ -47,7 +47,7 @@
 | 模块 | 范围 | 状态 | 大纲 |
 |---|---|---|---|
 | **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | ✅ | 见下表（无独立长大纲分册） |
-| **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | 🟡 B-01～B-08 ✅；B-09 🟡；B-10 ⏳ | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
+| **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | 🟡 B-01～B-09 ✅；B-10 ⏳ | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
 | **C** 核心编程技巧与并发原语 | 21–30 | ⏳ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
 | **D** 计算原语与高级算子 | 31–40 | ⏳ | [`CUDA专栏大纲/Module-D.md`](CUDA专栏大纲/Module-D.md) |
 | **E** DL 工程实战与系统集成 | 41–50 | ⏳ | [`CUDA专栏大纲/Module-E.md`](CUDA专栏大纲/Module-E.md) |
@@ -91,15 +91,15 @@
 | 16 / B-06 | Pinned Memory 与 DMA / Overlap | ✅ | `B-06*.md` / `06_pinned_dma.cu` + results/plot | [大纲](CUDA专栏大纲/B-06_pinned_dma.md) |
 | 17 / B-07 | Async Copy / Pipeline（GMEM→SMEM） | ✅ | `B-07*.md` / `07_cp_async_pipeline.cu` + results/plot | [大纲](CUDA专栏大纲/B-07_cp_async.md) |
 | 18 / B-08 | Hopper TMA：Bulk Copy 与吞吐墙 | ✅ | `B-08*.md` / `08_tma_intro.cu` + results/plot | [大纲](CUDA专栏大纲/B-08_tma.md) |
-| 19 / B-09 | 数据布局（AoS / SoA / Transpose） | 🟡 | 正文+`09_layout_transform.cu` ✅；实测 CSV ⏳ | [大纲](CUDA专栏大纲/B-09_layout.md) |
+| 19 / B-09 | 数据布局（AoS / SoA / Transpose） | ✅ | `B-09*.md` / `09_layout_transform.cu` + results/plot | [大纲](CUDA专栏大纲/B-09_layout.md) |
 | 20 / B-10 | Module B Checklist（症状→证据→处方） | ⏳ | — | [大纲](CUDA专栏大纲/B-10_checklist.md) |
 
 路径前缀：文章 `article/02_memory_optim/`，示例 `examples/02_memory_optim/`。
 
 ### 4.2 当前焦点
 
-1. **B-09**：目标卡跑 `--mode sweep` / `modes` → 落 CSV → 回填 TL;DR → `python scripts/plot_b09_layout.py`
-2. **B-10**：按 [B-10 大纲](CUDA专栏大纲/B-10_checklist.md) 汇总 B-01～B-09，默认不新开 micro-bench
+1. **B-10**：按 [B-10 大纲](CUDA专栏大纲/B-10_checklist.md) 汇总 B-01～B-09，默认不新开 micro-bench
+2. （B-09 实测已落盘：RTX 5090，见 `docs/results/B-09_*`）
 
 ### 4.3 工程索引型最低交付（新章）
 
@@ -141,7 +141,7 @@
 
 - Module A：`examples/01_cuda_basics/*.cu`
 - Module B：`examples/02_memory_optim/01_*.cu` … `09_*.cu`
-- 实测摘要：`docs/results/B-05_*` … `B-09_*`（B-09 待完整 CSV）
+- 实测摘要：`docs/results/B-05_*` … `B-09_*`
 
 ### 7.2 脚本与结果
 

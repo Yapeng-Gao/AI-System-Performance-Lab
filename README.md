@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/license-GPL%20v3-blue)
 
 **AI System Performance Lab** 是《AI 系统性能工程》专栏的配套仓库。  
-**当前主线**：CUDA Module A + Module B（已写到 B-09；B-09 实测待落盘，B-10 Checklist 规划中）。  
+**当前主线**：CUDA Module A + Module B（B-01～B-09 已落地；B-10 Checklist 规划中）。  
 结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
 
 ## 怎么读
@@ -105,7 +105,7 @@ python scripts/plot_b07_cp_async.py
 | 模块 | 路径 | 状态 |
 | :--- | :--- | :--- |
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
-| **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | 🟡 B-01～B-09 正文/示例 ✅（B-09 实测待落盘）；B-10 ⏳ |
+| **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | 🟡 B-01～B-09 ✅；B-10 ⏳ |
 | **Module C–E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。

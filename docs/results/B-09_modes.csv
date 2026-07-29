@@ -1,0 +1,7 @@
+mode,median_ms,useful_gbps
+aos,0.176736,189.8562
+soa,0.013152,2551.2799
+copy,0.068576,1957.2114
+transpose_naive,0.174656,768.4690
+transpose_tiled,0.075456,1778.7549
+transpose_pad,0.074432,1803.2261

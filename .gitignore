@@ -88,3 +88,4 @@ test-results/
 *.bak
 *.cache
 
+.cursor/
