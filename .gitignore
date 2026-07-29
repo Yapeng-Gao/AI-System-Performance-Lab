@@ -52,10 +52,12 @@ _deps/
 *~
 .DS_Store
 
-# CUDA
+# CUDA / Nsight
 *.cubin
 *.fatbin
 *.ptx
+*.ncu-rep
+*.nsys-rep
 *.cudafe*
 *.gpu
 *.reg.c

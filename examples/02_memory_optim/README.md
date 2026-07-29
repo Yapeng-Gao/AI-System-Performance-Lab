@@ -440,6 +440,10 @@ DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
 
 # 有 CSV 后重画：
 python scripts/plot_b08_tma.py
+
+# 可选旁证（NCU；忽略附着时程序自打印的 ms）：
+DO_NCU=1 bash examples/02_memory_optim/08_profile_tma.sh ncu-only
+# SASS：bash examples/02_memory_optim/08_dump_sass.sh
 ```
 
 结果：`docs/results/B-08_tma.md`。配套文章：`article/02_memory_optim/B-08*.md`。
@@ -470,6 +474,9 @@ AoS vs SoA（按 `touch_fields`）+ 矩阵 copy / transpose（**不限 sm_90+**�
 
 # 有 CSV 后重画：
 python scripts/plot_b09_layout.py
+
+# 可选旁证（sectors/request；忽略附着时程序自打印的 ms）：
+DO_NCU=1 bash examples/02_memory_optim/09_profile_layout.sh ncu-only
 ```
 
 结果：`docs/results/B-09_layout.md`。配套文章：`article/02_memory_optim/B-09*.md`。
@@ -484,6 +491,9 @@ python scripts/plot_b09_layout.py
 - `06_profile_pinned_dma.sh`：B-06 Pinned/DMA 批量对照（可选 `DO_NSYS=1` 采集 overlap 时间线）
 - `07_profile_cp_async_pipeline.sh`：B-07 设备内 async/pipeline 批量对照（可选 `DO_NCU=1`）
 - `07_dump_sass.sh`：B-07 导出 SASS，核对 `LDGSTS` / `CP.ASYNC`
+- `08_profile_tma.sh`：B-08 TMA 批量对照（可选 `DO_NCU=1` / `ncu-only`）
+- `08_dump_sass.sh`：B-08 导出 SASS，核对 TMA / bulk 路径
+- `09_profile_layout.sh`：B-09 AoS/SoA/transpose 批量对照（可选 `DO_NCU=1` sectors/request）
 
 ## 📝 注意事项
 

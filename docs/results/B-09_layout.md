@@ -49,6 +49,18 @@ CSV：[`B-09_modes.csv`](B-09_modes.csv)。正确性检查：copy / transpose_* 
 3. `transpose_tiled` / `pad` ≫ `naive`，并达 copy 的 **~91% / ~92%**；pad 略优于 tiled（bank）。  
 4. SoA 在 touch=2/4 报出极高 useful GB/s，主要是工作集吃 L2；解读以加速比曲线为准。
 
+## NCU 旁证（sectors/request）
+
+可选（目标卡上）：
+
+```bash
+DO_NCU=1 bash examples/02_memory_optim/09_profile_layout.sh ncu-only
+```
+
+采集 AoS/SoA（touch=1/8）与 `transpose_naive` / `transpose_tiled` 的
+`l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_{ld,st}.ratio`。
+理想 float 合并约 **4**；贴表后回填本节。**不要**把 ncu 附着时程序自打印的 ms 当结论。
+
 ## 重画
 
 ```bash

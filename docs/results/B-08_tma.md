@@ -55,6 +55,17 @@ CSV：`docs/results/B-08_sweep.csv`。重画：`python scripts/plot_b08_tma.py`�
 2. **重叠才是产品**：`pipe2` 在 `fma=1` 达约 **1.69×**，随后随 AI 回落到 ~1.02×。  
 3. 与正文标题一致：TMA 引擎本身不是免费午餐；**prefetch ∥ compute** 才藏延迟。
 
+## NCU / SASS 旁证
+
+可选（目标卡上）：
+
+```bash
+DO_NCU=1 bash examples/02_memory_optim/08_profile_tma.sh ncu-only
+bash examples/02_memory_optim/08_dump_sass.sh
+```
+
+跑通后把 metric 表 / SASS 命中摘要贴回本章；**不要**把 ncu 附着时程序自打印的 ms 当结论。
+
 ## 复现命令
 
 ```bash
