@@ -49,17 +49,36 @@ CSV：[`B-09_modes.csv`](B-09_modes.csv)。正确性检查：copy / transpose_* 
 3. `transpose_tiled` / `pad` ≫ `naive`，并达 copy 的 **~91% / ~92%**；pad 略优于 tiled（bank）。  
 4. SoA 在 touch=2/4 报出极高 useful GB/s，主要是工作集吃 L2；解读以加速比曲线为准。
 
-## NCU 旁证（sectors/request）
-
-可选（目标卡上）：
+## NCU 旁证（sectors/request，RTX 5090 / sm_120）
 
 ```bash
 DO_NCU=1 bash examples/02_memory_optim/09_profile_layout.sh ncu-only
 ```
 
-采集 AoS/SoA（touch=1/8）与 `transpose_naive` / `transpose_tiled` 的
-`l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_{ld,st}.ratio`。
-理想 float 合并约 **4**；贴表后回填本节。**不要**把 ncu 附着时程序自打印的 ms 当结论。
+> **不要**把 ncu 附着时程序自打印的 ms 当结论。指标：
+> `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_{ld,st}.ratio`  
+> 理想 float 合并约 **4** sectors/request。
+
+### AoS vs SoA
+
+| mode | touch | ld sec/req | st sec/req | ld sectors | st sectors | 一句话 |
+|---|---:|---:|---:|---:|---:|---|
+| `aos` | 1 | **32** | **32** | 4 194 304 | 4 194 304 | 每线程各打一 sector |
+| `soa` | 1 | **4** | **4** | 524 288 | 524 288 | 理想合并 |
+| `aos` | 8 | **32** | **32** | 33 554 432 | 33 554 432 | 每字段仍跨步；request×8 |
+| `soa` | 8 | **4** | **4** | 4 194 304 | 4 194 304 | 仍合并；request×8 |
+
+同 touch=1：AoS 的 sector 总量是 SoA 的 **8×**（4.19M / 0.52M）——与「stride=32B → 废字节」叙事一致。  
+touch=8 时 AoS 的 **sec/req 仍为 32**（合并形状没变好）；墙钟加速比收窄来自 useful 变多 + 缓存复用，不是 AoS「突然合并了」。
+
+### Transpose
+
+| mode | ld sec/req | st sec/req | 一句话 |
+|---|---:|---:|---|
+| `transpose_naive` | **4** | **32** | 读合、**写跨步** |
+| `transpose_tiled` | **4** | **4** | SMEM 重排后读写都合 |
+
+与裸跑一致：naive 地板来自 store 侧 32 sec/req；tiled 把写拉回 4。
 
 ## 重画
 

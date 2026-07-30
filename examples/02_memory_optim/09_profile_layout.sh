@@ -81,10 +81,12 @@ COMMON_ARGS=(--n "${N}" --dim "${DIM}" --block "${BLOCK}"
 echo
 echo "======== NCU sectors/request (AoS vs SoA) ========"
 echo "Ideal float coalesced ≈ 4 sectors/request; AoS touch=1 often ≫ SoA."
+# --kernel-name-base 只能是 function|demangled|mangled；过滤名用 --kernel-name
 for m in aos soa; do
   for tf in 1 8; do
     echo "---- mode=${m} touch=${tf} ----"
-    ncu --kernel-name-base "kernel_${m}" --launch-skip 2 --launch-count 1 \
+    ncu --kernel-name-base function --kernel-name "regex:kernel_${m}" \
+      --launch-skip 2 --launch-count 1 \
       --metrics "${SECTOR_METRICS}" \
       "${BIN}" --mode "${m}" --touch-fields "${tf}" "${COMMON_ARGS[@]}" || \
       echo "WARNING: sectors metrics failed for ${m} touch=${tf}" >&2
@@ -96,7 +98,8 @@ echo "======== NCU sectors/request (transpose naive vs tiled) ========"
 # verify launch + fill + warmup×2 + timed run → skip 3 keeps last timed launch
 for m in transpose_naive transpose_tiled; do
   echo "---- mode=${m} ----"
-  ncu --kernel-name-base "kernel_${m}" --launch-skip 3 --launch-count 1 \
+  ncu --kernel-name-base function --kernel-name "regex:kernel_${m}" \
+    --launch-skip 3 --launch-count 1 \
     --metrics "${SECTOR_METRICS}" \
     "${BIN}" --mode "${m}" "${COMMON_ARGS[@]}" || \
     echo "WARNING: sectors metrics failed for ${m}" >&2

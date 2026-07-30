@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# B-08: dump SASS for 08_tma_intro.cu (verify TMA / bulk path vs sync LDG+STS)
+# B-08: dump SASS for 08_tma_intro.cu (verify TMA / elect / mbarrier vs sync LDG+STS)
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -38,10 +38,28 @@ for i in "${!ARCHS[@]}"; do
   fi
 
   echo "Wrote ${sass}"
-  echo "---- TMA / bulk / LDG / STS hits (first 50) ----"
-  grep -nEi 'UTMA|TMA|BULK|CP\.ASYNC|LDGSTS|LDG\.E|STS|MBARRIER|ARRIVES' "${sass}" \
-    | head -n 50 || echo "(no obvious TMA/bulk string; search manually)"
+  echo "---- counts ----"
+  printf "  UTMALDG*: "; grep -cE 'UTMALDG' "${sass}" || true
+  printf "  ELECT:    "; grep -cE 'ELECT' "${sass}" || true
+  printf "  MBARRIER attrs: "; grep -cE 'EIATTR_.*MBARRIER' "${sass}" || true
+
+  echo "---- UTMALDG / ELECT / MBARRIER hits (first 30) ----"
+  grep -nE 'UTMALDG|^\s+/\*.*\*/\s+ELECT |EIATTR_.*MBARRIER' "${sass}" \
+    | head -n 30 || echo "(none)"
+
+  # 只从 .text 段起截，避免 .dword 引用污染
+  echo "---- .text.kernel_tensor2d: TMA-ish ----"
+  awk '/\.text\._Z14kernel_tensor2d/,/\.nv\.(shared|constant0)\._Z14kernel_tensor2d/' "${sass}" \
+    | grep -nE 'UTMALDG|ELECT|LDG\.E|STS' | head -n 20 || true
+
+  echo "---- .text.kernel_bulk1d: TMA-ish / LDG+STS ----"
+  awk '/\.text\._Z13kernel_bulk1d/,/\.nv\.(shared|constant0)\._Z13kernel_bulk1d/' "${sass}" \
+    | grep -nE 'UTMALDG|ELECT|LDG\.E|STS|ARRIVES|MBAR' | head -n 25 || true
+
+  echo "---- .text.kernel_sync: expect LDG+STS, little/no UTMALDG ----"
+  awk '/\.text\._Z11kernel_sync/,/\.nv\.(shared|constant0)\._Z11kernel_sync/' "${sass}" \
+    | grep -nE 'UTMALDG|ELECT|LDG\.E|STS' | head -n 15 || true
   echo
 done
 
-echo "Done. Expect bulk/pipe kernels to show TMA/bulk-related ops; sync still has LDG+STS."
+echo "Done. Expect tensor2d: UTMALDG.2D; bulk/pipe: ELECT + mbarrier; sync: LDG+STS."

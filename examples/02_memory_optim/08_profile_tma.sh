@@ -92,12 +92,14 @@ for m in sync bulk1d pipe2; do
 done
 
 echo "======== NCU instruction counts (sync vs bulk1d) ========"
+# --kernel-name-base 只能是 function|demangled|mangled；过滤名用 --kernel-name
 for m in sync bulk1d; do
   echo "---- mode=${m} ----"
-  ncu --kernel-name-base "kernel_${m}" --launch-skip 2 --launch-count 1 \
+  ncu --kernel-name-base function --kernel-name "regex:kernel_${m}" \
+    --launch-skip 2 --launch-count 1 \
     --metrics smsp__inst_executed.sum,sm__warps_launched.sum \
     "${BIN}" --mode "${m}" "${COMMON_ARGS[@]}" || \
-    echo "WARNING: inst metrics failed for mode=${m} (sm_120 name may differ); check .ncu-rep" >&2
+    echo "WARNING: inst metrics failed for mode=${m}; try: ncu --query-metrics | rg inst_executed" >&2
   echo
 done
 
