@@ -1,377 +1,161 @@
-# CUDA 专栏规划（单独文档）
+# CUDA 专栏规划（导航）
 
-本文件是从 `docs/大模型算法系列规划.md` 中**抽离并优化**得到的 **CUDA 专栏**独立规划稿，便于后续按专栏拆分与持续迭代。
+本文件是 **CUDA 专栏的进度导航与约定**。长写作大纲按章放在 [`CUDA专栏大纲/`](CUDA专栏大纲/README.md)，不要把全文大纲堆回本页。
+
+源自 `docs/大模型算法系列规划.md` 的 CUDA 部分抽离；仓库落地以本文 + 分册大纲为准。
 
 ---
 
-## 0. 专栏定位与读者收益
+## 0. 文档地图
 
-**专栏目标**：建立从 C++/CUDA 源码 → PTX/SASS → SM 微架构 → Memory/Compute Roofline → 工业级 Benchmark/Profiling 的完整闭环能力；最终能“写得快、测得准、改得对”。
+| 文档 | 职责 |
+|---|---|
+| **本文件** | 定位、状态约定、Module A–E 总表、每章一行索引、写作模板、维护约定 |
+| [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) | 按章/按模块写作大纲（边界 / TL;DR / MVP / 文献池） |
+| [`仓库架构与现状.md`](仓库架构与现状.md) | 目录树、已删占位、插图约定 |
+| `docs/results/` | 实测摘要与 CSV |
+| `article/` / `examples/` | 正文与可运行示例 |
+
+---
+
+## 1. 专栏定位与约定
+
+**目标**：建立从 C++/CUDA 源码 → PTX/SASS → SM 微架构 → Memory/Compute Roofline → 工业级 Benchmark/Profiling 的闭环；做到「写得快、测得准、改得对」。
 
 **仓库落地路径**：
 
-- **正文文章**：`article/`
-- **可运行示例（章节实验代码）**：`examples/`（主产物；CMake 自动扫描）
-- **实测与绘图**：`docs/results/`（CSV/摘要）+ `scripts/plot_b0N_*.py` → `article/**/assets/`
-- **目录结构**：[`docs/仓库架构与现状.md`](仓库架构与现状.md)（仓库已瘦身为 `article/` + `examples/` 主线）
+- **正文**：`article/`
+- **示例**：`examples/`（CMake 自动扫描）
+- **实测与绘图**：`docs/results/` + `scripts/plot_b0N_*.py` → `article/**/assets/`
 
 **状态约定**：
 
-- ✅ 已落地：仓库已有对应文章/代码
-- 🟡 部分落地：文章/代码有其一，或为占位实现
-- ⏳ 规划中：仅大纲，仓库暂无对应实现
+| 标记 | 含义 |
+|---|---|
+| ✅ | 文章 + 示例 +（需要时）实测已落地 |
+| 🟡 | 部分落地（缺实测 / 或文章与代码缺一） |
+| ⏳ | 仅大纲或未开工 |
 
-**正文插图约定（B-05 起定稿）**：原理 / 时间线用短 **ASCII**；实测用 **matplotlib**（可复现）；封面可选。不再把信息过载的 AI 教学海报当正文原理图。
+**正文插图（B-05 起）**：原理 / 时间线用短 **ASCII**；实测用 **matplotlib**；封面可选。不用信息过载的 AI 教学海报当原理图。
 
----
-
-## 1. 目录总览（Module A–E）
-
-- **Module A（1–10）CUDA 基础与 GPU 架构**：✅（文章/示例已落地；封面已加）
-- **Module B（11–20）内存体系与访存优化**：🟡（11–17 / B-01～B-07 文章+示例+实测已落地；18–20 规划中）
-- **Module C（21–30）核心编程技巧与并发原语**：⏳（规划中；`examples/03_*` 仅 README）
-- **Module D（31–40）计算原语与高级算子实现**：⏳（规划中）
-- **Module E（41–50）深度学习工程实战与系统集成**：⏳（规划中；仓库 Python/绑定为占位）
+**编号**：总序号 11–20 ↔ Module B 文件编号 B-01～B-10（11↔B-01 … 20↔B-10）。
 
 ---
 
-## 2. Module A：CUDA 基础与 GPU 架构（1–10）✅
+## 2. Module A–E 总览
 
-> **模块目标**：建立从逻辑并行模型到硬件执行实体的“物理映射”，并形成可复现的性能分析习惯（SASS/NSYS/NCU）。
-
-### 2.1 章节清单（文章 ↔ 示例映射）
-
-| 篇章 | 主题 | 文章（正文） | 示例（可运行） |
+| 模块 | 范围 | 状态 | 大纲 |
 |---|---|---|---|
-| 1 | CUDA 核心概念总览与演进 | `article/01_cuda_basic/A-01*.md` ✅ | `examples/01_cuda_basics/01_hello_modern.cu` ✅ |
-| 2 | GPU 硬件架构深度解析 | `article/01_cuda_basic/A-02*.md` ✅ | `examples/01_cuda_basics/02_hardware_query.cu` ✅ |
-| 3 | 编程模型物理映射（GTE/SM/Warp） | `article/01_cuda_basic/A-03*.md` ✅ | `examples/01_cuda_basics/03_grid_mapping.cu` ✅ |
-| 4 | 线程调度：SIMT / Divergence / Replay | `article/01_cuda_basic/A-04*.md` ✅ | `examples/01_cuda_basics/04_warp_divergence.cu` ✅ |
-| 5 | Kernel 结构与 ABI / SASS 视角 | `article/01_cuda_basic/A-05*.md` ✅ | `examples/01_cuda_basics/05_kernel_structure.cu` ✅ |
-| 6 | CUDA 工具链：NVCC / NVRTC | `article/01_cuda_basic/A-06*.md` ✅ | `examples/01_cuda_basics/06_nvrtc_jit.cpp` ✅ |
-| 7 | 内存模型全景：UVA / Memory Spaces | `article/01_cuda_basic/A-07*.md` ✅ | `examples/01_cuda_basics/07_memory_spaces.cu` ✅ |
-| 8 | 异步执行：Stream / Event / Pipeline | `article/01_cuda_basic/A-08*.md` ✅ | `examples/01_cuda_basics/08_async_pipeline.cu` ✅ |
-| 9 | 调试与错误诊断：Compute Sanitizer | `article/01_cuda_basic/A-09*.md` ✅ | `examples/01_cuda_basics/09_debug_and_sanitizer.cu` ✅ |
-| 10 | 性能建模：Roofline / SOL | `article/01_cuda_basic/A-10*.md` ✅ | `examples/01_cuda_basics/10_roofline_demo.cu` ✅ |
-
-### 2.2 对仓库结构的优化建议（不改代码，仅改“规划表达”）
-
-原总规划里曾写成 `examples/01_cuda_basics/01_hello_world/` 这种“按子目录组织”的结构，但仓库当前实际是**扁平单文件**组织。建议本专栏统一采用：
-
-- **示例代码**：以 `examples/<module_dir>/<NN>_<topic>.<cu/cpp>` 为主（当前就是这样）
-- **配套脚本**：放在同目录（当前如 `examples/01_cuda_basics/*_inspect_*.sh` 已具备）
-
-这样规划页与仓库现状一致，读者不需要“脑补目录重构”。
+| **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | ✅ | 见下表（无独立长大纲分册） |
+| **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | 🟡 B-01～B-09 ✅；B-10 ⏳ | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
+| **C** 核心编程技巧与并发原语 | 21–30 | ⏳ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
+| **D** 计算原语与高级算子 | 31–40 | ⏳ | [`CUDA专栏大纲/Module-D.md`](CUDA专栏大纲/Module-D.md) |
+| **E** DL 工程实战与系统集成 | 41–50 | ⏳ | [`CUDA专栏大纲/Module-E.md`](CUDA专栏大纲/Module-E.md) |
 
 ---
 
-## 3. Module B：内存体系与访存优化（11–20）🟡
+## 3. Module A：CUDA 基础与 GPU 架构 ✅
 
-> **模块目标**：攻克 Memory Wall，掌握从访问模式、缓存策略到异步搬运流水线的系统化方法。
+> **目标**：逻辑并行模型 → 硬件执行实体的物理映射；养成可复现性能分析习惯（SASS/NSYS/NCU）。
 
-### 3.1 已落地章节（11–17 / B-01～B-07）✅
-
-| 篇章 | 文件编号 | 主题 | 文章（正文） | 示例（可运行） |
-|---|---|---|---|---|
-| 11 | **B-01** | Global Memory：Coalescing / 向量化 / TMA 视角 | `article/02_memory_optim/B-01*.md` ✅ | `examples/02_memory_optim/01_global_mem_bandwidth.cu` ✅ |
-| 12 | **B-02** | Shared Memory：Bank / Padding / Swizzle | `article/02_memory_optim/B-02*.md` ✅ | `examples/02_memory_optim/02_shared_mem_bank_conflict.cu` ✅ |
-| 13 | **B-03** | 寄存器压力与 Spilling / Occupancy | `article/02_memory_optim/B-03*.md` ✅ | `examples/02_memory_optim/03_register_spill.cu` ✅ |
-| 14 | **B-04** | L2 Cache 行为与 Residency | `article/02_memory_optim/B-04*.md` ✅ | `examples/02_memory_optim/04_l2_residency.cu` ✅ |
-| 15 | **B-05** | Unified Memory：Page Fault / Prefetch / Advise | `article/02_memory_optim/B-05*.md` ✅ | `examples/02_memory_optim/05_unified_memory_pf.cu` ✅ + `docs/results/B-05_*` + `scripts/plot_b05_unified_memory.py` |
-| 16 | **B-06** | Pinned Memory 与 DMA：H2D/D2H 吞吐与 Overlap | `article/02_memory_optim/B-06*.md` ✅ | `examples/02_memory_optim/06_pinned_dma.cu` ✅ + `docs/results/B-06_*` + `scripts/plot_b06_pinned_dma.py` |
-| 17 | **B-07** | Async Copy / Pipeline：GMEM→SMEM 藏延迟边界 | `article/02_memory_optim/B-07*.md` ✅ | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ + `docs/results/B-07_*` + `scripts/plot_b07_cp_async.py` |
-
-> 编号约定：规划总序号 11–20 与 Module B 内文件编号 B-01～B-10 一一对应（11↔B-01 … 17↔B-07）。  
-> B-05～B-07 正文：**ASCII 讲原理**，**matplotlib 讲实测**；详见 [`仓库架构与现状.md`](仓库架构与现状.md) §4。
-
-### 3.2 规划中章节（18–20）⏳（建议“先落地最小可复现实验”）
-
-建议 18–20 以**工程索引型**方式落地：每篇至少一个 `examples/02_memory_optim/0N_*.cu` + `docs/results/` 指标（NCU/NSYS/SASS 三选一；设备内 async 优先 NCU）。
-
-- **可运行 micro-bench**
-- **NCU/NSYS 指标采集脚本入口**
-- **SASS 证据（可选）**
-
-#### 3.2.1 B-07～B-10（工程索引型写作清单）
-
-| 篇章 | 工程索引型标题（建议） | 最小可复现实验（MVP） | 证据/指标（最低要求） | 代码落点 |
-|---|---|---|---|---|
-| 17 / **B-07** ✅ | Async Copy / Pipeline：GMEM→SMEM 何时能藏延迟，何时反而变慢 | sync load vs `memcpy_async` / `cuda::pipeline`；扫 compute intensity（**设备侧** GMEM→SMEM，不重复 B-06 Host↔Device）；对照 2/4-stage | CUDA event 加速比 vs AI 曲线；NCU：WarpStateStats（sm_120 上部分 legacy 指标可能 n/a） | `examples/02_memory_optim/07_cp_async_pipeline.cu` ✅ + `docs/results/B-07_cp_async_pipeline.md` ✅ |
-| 18 / **B-08** | Hopper TMA：从单线程 Bulk Copy 到吞吐墙（何时该上、何时别上） | 1D bulk + 2D tensor-map + pipe2 + intensity 扫（**sm_90+**，RTX 5090 ✅） | CUDA event 加速比曲线；可选 SASS/NCU | `08_tma_intro.cu` ✅ + `docs/results/B-08_*` ✅ |
-| 19 / **B-09** | 数据布局（AoS/SoA/Transpose）：一次布局调整带来的事务变化 | AoS vs SoA + transpose micro-bench | NCU：dram 吞吐 +（可选）sectors/request 类指标 | `examples/02_memory_optim/09_layout_transform.cu`（建议新增） |
-| 20 / **B-10** | Module B Checklist：从“症状”到“证据”到“处方”的统一表 | 汇总 11–19 的实验结论与常见坑 | 输出 1 页 checklist + 对应 benchmark/脚本入口 | `docs/CUDA专栏规划.md`（本文件）+ `docs/results/` |
-
-#### 3.2.2 每篇文章的固定结构（模板）
-
-- **要解决的问题**：一句话定义瓶颈与场景边界（例如 “为什么带宽很高但算力闲置？”）
-- **结论先行**：给 3–5 条工程可执行结论（What to do / What not to do）
-- **最小复现实验（MVP）**：可运行代码 + 参数 + 预期现象
-- **证据链**：至少一种（NCU/NSYS/SASS），并落盘到 `docs/results/`
-- **优化路径**：从“诊断”到“修改”到“回归验证”的步骤
-- **常见误区**：把最常踩的坑写成 checklist
-
-#### 3.2.3 B-06 写作大纲（Pinned / DMA / Overlap）✅ 已落地
-
-> **已交付**：
-> - 正文：`article/02_memory_optim/B-06*.md`（ASCII 原理 + RTX 5090 实测表/图、NSYS CLI 旁证）
-> - 封面：`article/02_memory_optim/assets/B-06-pinned-dma-cover.png`
-> - 实测图：`B-06-mode-gbs-bars.png` / `B-06-overlap-median-bars.png`（`scripts/plot_b06_pinned_dma.py`）
-> - 示例：`examples/02_memory_optim/06_pinned_dma.cu` + `06_profile_pinned_dma.sh`
-> - 结果：`docs/results/B-06_pinned_dma_rtx5090.md` + CSV
->
-> 下方保留大纲便于对照审稿；以正文为准。
-
-**标题**：`B-06. Pinned Memory 与 DMA：H2D/D2H 吞吐上限与 Overlap 条件`
-
-**与前后章的边界**
-
-| 已有章节 | 已覆盖 | B-06 应深化 / 避免重复 |
-|---|---|---|
-| A-07 | UVA、Zero-Copy 概念警示 | 用 micro-bench 量化 mapped vs memcpy；给出“只读一次 / 不缓存”判定 |
-| A-08 | Stream 流水线、Pinned 是硬前置 | 不重讲三级流水线教程；改讲 **为何伪异步、CE 数量、双向饱和、chunk 粒度** |
-| B-05 | UM fault/prefetch/advise → 显式管理 | 承接“显式路径怎么做到可控”；对照表可引用 B-05 §6 |
-| B-07（规划） | 设备侧 async / pipeline | 本章只到 Host↔Device；GMEM→SMEM 留给下一章 |
-
-**TL;DR 目标结论（写作时先写死 5 条）**
-
-1. Pageable 上的 `cudaMemcpyAsync` **不是真异步**：驱动先 stage 到临时 pinned，再 DMA；吞吐低、且易与其他流串行化。
-2. Pinned（`cudaMallocHost` / `cudaHostAlloc`）是 **DMA 直达 + 真 overlap** 的物理前提；`cudaHostRegister` 可用但通常更慢、更易踩 NUMA/对齐坑。
-3. Overlap **三条件同时成立**：pinned + 非默认 stream + `asyncEngineCount≥1`；H2D∥D2H 还要求足够 CE（通常看 `asyncEngineCount≥2`）且主机内存带宽跟得上。
-4. 吞吐上限常不是“理论 PCIe”，而是 **min(PCIe有效带宽, DRAM/NUMA带宽, 驱动开销/小包启动)**；小传输 latency-bound，大传输才逼近链路墙。
-5. Zero-Copy（mapped pinned）省的是 memcpy launch，**不省 PCIe**；离散卡上仅适合“触达少、几乎不复用”的路径，否则直接打穿 PCIe。
-
-**建议正文结构**
-
-1. **问题定义**：B-05 之后，显式路径仍可能“看起来 Async 但不加速”——伪异步、伪 overlap、双向打不满。
-2. **物理模型**：Pageable staging → Pinned DMA；Copy Engine 与 Compute Engine 分家；`asyncEngineCount` 含义。
-3. **分配与 flags**：`cudaMallocHost` vs `cudaHostAlloc`（Default / Portable / Mapped / WriteCombined）vs `cudaHostRegister`；Pinned 过量会挤占 OS 可分页内存。
-4. **Overlap 决策表**：单条件失败时的 NSYS 症状（串行 Copy、Host sync、同流依赖）。
-5. **吞吐实验矩阵（MVP）**：扫 size；对照 pageable / pinned /（可选）WriteCombined；单向 H2D、单向 D2H、双向并行；可选 NUMA local vs remote。
-6. **Zero-Copy 分支**：mapped kernel 直读 vs 显式 memcpy；与 A-07 警示对齐，用数据判停。
-7. **工程边界（2024–2026）**：小包合并；`cudaMemcpyBatchAsync`（CUDA 12.8+）摊销 launch 开销（扩展阅读）；Grace NVLink-C2C / HMM 与“传统 PCIe+pinned”对照（注明硬件门槛，不作本章必跑）。
-8. **误区清单 + SOP + 下一章钩子**（→ B-07 设备内 async）。
-
-**最小可复现实验（`06_pinned_dma.cu`）**
-
-| 编号 | 配置 | 要回答的问题 |
-|---|---|---|
-| A | pageable + `cudaMemcpyAsync` | 是否退化为 sync / staging？吞吐多少？ |
-| B | pinned + Async H2D | 单向 DMA 吞吐是否明显上升？ |
-| C | serial（1 stream 切块 H2D→Kernel） | overlap 的公平串行基线 |
-| D | overlap（多 stream 切块） | 相对 serial 端到端是否下降？NSYS 是否跨 chunk 重叠？ |
-| E | pinned + 双向 H2D∥D2H | 合计是否接近 2× 单向，还是被主机内存/CE 卡住？ |
-| F | mapped zero-copy kernel | 有效 host-read 带宽（勿直接对比 memcpy GB/s） |
-
-**证据最低要求**：CUDA event / 墙钟得到 GB/s（first/median）；优先用 `serial` vs `overlap` vs `pinned` 对照判定（copy-bound 时 overlap≈pinned 即成功）；NSYS CLI/`stats` 可作旁证，有 GUI 再看时间线。可选：记录 `asyncEngineCount`、PCIe 代数、NUMA 绑定。
-
-**参考文献池（与正文 §9 对齐）**
-
-- 官方：CUDA Best Practices（Pinned / Async Overlap）、Programming Guide（Async Execution）、Runtime API（[API sync behavior](https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html)、`cudaHostAlloc` flags）、Nsight Systems User Guide
-- 经典博客：[How to Optimize Data Transfers](https://developer.nvidia.com/blog/how-optimize-data-transfers-cuda-cc/)、[How to Overlap Data Transfers](https://developer.nvidia.com/blog/how-overlap-data-transfers-cuda-cc/)
-- 新 API：CUDA 12.8+ [`cudaMemcpyBatchAsync`](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-host-programming.html)
-- 近年研究/工程：Grace Hopper system memory（[ICPP’24 / arXiv:2407.07850](https://arxiv.org/abs/2407.07850)）、MultiPath H2D（[arXiv:2512.16056](https://arxiv.org/abs/2512.16056)）、PCIe Gen5/NUMA 实测（nvbandwidth 类工具链）
-
-#### 3.2.4 B-07 写作大纲（Async Copy / Pipeline）✅ 文章+示例+实测已落地
-
-> **已交付**：
-> - 正文：`article/02_memory_optim/B-07*.md`（ASCII 原理 + RTX 5090 完整 intensity sweep + NCU WarpStateStats + SASS 旁证）
-> - 示例：`examples/02_memory_optim/07_cp_async_pipeline.cu` + `07_profile_cp_async_pipeline.sh` + `07_dump_sass.sh`
-> - 结果：`docs/results/B-07_cp_async_pipeline.md` + `B-07_sweep.csv` / `B-07_modes.csv`
-> - 实测图：`B-07-speedup-vs-fma.png` / `B-07-mode-speedup-bars.png`（`scripts/plot_b07_cp_async.py`）
->
-> 路线：**Ampere-first 多级流水线（优先 thread-local / unified）+ arithmetic intensity 扫描**；TMA 整章交给 B-08；warp specialization / CUTLASS Pipeline 仅扩展阅读。
-
-**标题**：`B-07. Async Copy / Pipeline：GMEM→SMEM 何时能藏延迟，何时反而变慢`
-
-**与前后章的边界**
-
-| 已有章节 | 已覆盖 | B-07 应深化 / 避免重复 |
-|---|---|---|
-| A-08 | Host 侧 Stream / H2D→Compute→D2H 三级流水线 | **不重讲** CE/Stream；一句话对照「Host CE overlap ≠ SM 内 async copy」 |
-| B-01 | `cp.async`→TMA 概念演进、合并访问 | 把 Ampere 路径做成 **可复现 micro-bench + 决策表**；TMA 细节不展开 |
-| B-02 | SMEM bank / padding / swizzle | 强调数据 **落地之后** bank/swizzle 仍适用；本章不重做 bank conflict 教程 |
-| B-06 | Host↔Device pinned / DMA / overlap | 本章只谈 **GMEM→SMEM**；不重复 pageable/pinned |
-| B-08（规划） | Hopper TMA / `cp.async.bulk` | 本章只给钩子：大批量多维搬运、指令带宽墙 → 下一章 |
-
-**TL;DR 目标结论（写作时先写死 5 条）**
-
-1. `cp.async` / `cuda::memcpy_async` 是 **SM 内** DMA：GMEM→SMEM，旁路寄存器；与 B-06 的 Host Copy Engine **不是一层**。
-2. 收益来自 **outstanding stages × 足够 compute overlap**，不是「async 指令本身比 sync load 更快」。
-3. **低 arithmetic intensity / latency-bound** 才值得上；已 compute-bound 或 occupancy 已能藏 LDG 时，pipeline 同步与多 stage SMEM 常净亏损（见 Svedin 等实证）。
-4. Stage 加深换延迟，但挤占 SMEM → 掉 occupancy；shared/partitioned `cuda::pipeline` 有 per-stage barrier 开销——能 **thread-local** 就不要 block shared。
-5. 对齐/尺寸不满足时可能回退或走非预期路径；Hopper+ 大批量多维搬运交给 **B-08 TMA**，本章只给钩子。
-
-**建议正文结构**
-
-1. **问题定义**：B-06 后数据已在 HBM，kernel 仍「等 LDG」——用一行对照表区分 Host CE overlap vs 设备内 async copy。
-2. **物理模型**：`LDG → RF → STS` vs `LDGSTS` / `cp.async`；MIO / async copy 路径；为何不占长 scoreboard、可旁路 L1。
-3. **API 分层与同步**：sync load → 低层 `__pipeline_memcpy_async` / PTX → `cuda::memcpy_async` + `cuda::barrier` / `cuda::pipeline`；unified vs partitioned；commit 需 warp 收敛（官方 Warp Entanglement 警示）。
-4. **决策表**：何时上 pipeline、几 stage、何时回退 sync（对照文献 + 本机 intensity 曲线）。
-5. **MVP 实验矩阵**：见下表；主证据用 CUDA event；NCU 作旁证。
-6. **工程边界**：SMEM 预算 vs occupancy；`mio_throttle`；与 B-02「落地后仍要管 bank/swizzle」。
-7. **扩展阅读（2021–2026）**：CudaDMA 专用 copy warp → Ampere 硬件 async；CUTLASS multistage vs warp-specialized（不写生产级 GEMM）；Blackwell 仍保留 cp.async 路径 → 说明本章在消费级新卡仍有价值；钩子 → B-08 TMA。
-8. **误区清单 + SOP + 下一章钩子**（→ B-08 Hopper TMA）。
-
-**最小可复现实验（`07_cp_async_pipeline.cu`）**
-
-| 编号 | 配置 | 要回答的问题 |
-|---|---|---|
-| A | sync：`gmem→reg→smem`（或 sync load 后直接消费） | 公平基线时延/吞吐？ |
-| B | `memcpy_async` + 单缓冲 wait（无 overlap） | 仅换指令、不做流水线时有无收益/开销？ |
-| C | 2-stage `cuda::pipeline` | 相对 A 是否加速？ |
-| D | 4-stage `cuda::pipeline` | 更深 stage 是否继续赚，还是被 SMEM/occupancy 反噬？ |
-| E | 扫 compute intensity（FMA 次数或等价 AI） | 画出「加速比 vs AI」：低 AI 受益、高 AI 持平/变慢？ |
-| F（可选） | thread-local vs block shared pipeline | shared pipeline 的 barrier 开销是否可测？ |
-
-**证据最低要求**：CUDA event 得到 median 时延或有效带宽；**intensity 扫表**写入 `docs/results/`（主结论载体）。旁证：NCU 至少一组 A vs C/D（关注 `long_scoreboard` 下降、`mio_throttle`、或 sm vs dram 吞吐）。可选：SASS 确认出现 `LDGSTS` / `CP.ASYNC`。完整对照见已落地的 `examples/02_memory_optim/07_cp_async_pipeline.cu`。
-
-**参考文献池（与正文参考文献节对齐）**
-
-- 官方：CUDA Programming Guide — [Asynchronous Data Copies](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html)、[Pipelines](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/pipelines.html)（thread-local 优先；Warp Entanglement）；[Ampere Tuning Guide](https://docs.nvidia.com/cuda/ampere-tuning-guide/)（GMEM→SMEM 硬件加速）
-- 工程博客：[Controlling Data Movement to Boost Performance on the NVIDIA Ampere Architecture](https://developer.nvidia.com/blog/controlling-data-movement-to-boost-performance-on-ampere-architecture/)（对照 CudaDMA）
-- CCCL / libcu++：[`cuda::memcpy_async`](https://nvidia.github.io/cccl/libcudacxx/extended_api/asynchronous_operations/memcpy_async.html)（对齐门槛与架构回退；Hopper TMA 细节不在本章展开）
-- 高质量实证：Svedin et al., *Benchmarking the Nvidia GPU Lineage… with Asynchronous Memory Transfers*（PMBS@SC’21 / [arXiv:2106.04979](https://arxiv.org/abs/2106.04979)）——低 AI 约 1.07–1.35×，高 AI 可至 ~0.95×；Li et al., *Performance Implications of Async Memcpy and UVM*（IISWC’23，[PDF](https://lca.ece.utexas.edu/pubs/Li_IISWC_2023.pdf)）——GMEM→SMEM 非瓶颈时 async 无收益
-- 扩展阅读：Colfax / SIGARCH [Efficient GEMM Kernel Designs with Pipelining](https://research.colfax-intl.com/cutlass-tutorial-design-of-a-gemm-kernel/)；[CUTLASS Pipeline](https://docs.nvidia.com/cutlass/media/docs/cpp/pipeline.html)；MLC.ai [Pipelining GEMM with TMA](https://mlc.ai/modern-gpu-programming-for-mlsys/chapter_gemm_async/index.html)（为 B-08 铺垫）
-
-#### 3.2.5 B-08 写作大纲（Hopper TMA）✅ 文章+示例+5090 实测已落地
-
-> **已交付**：
-> - 正文：`article/02_memory_optim/B-08*.md` + 封面/实测图
-> - 示例：`examples/02_memory_optim/08_tma_intro.cu`（主命令 `--mode sweep`）
-> - 结果：`docs/results/B-08_tma.md` + `B-08_sweep.csv` / `B-08_modes.csv`
->
-> **路线**：Microbench-first；不写生产级 GEMM / WGMMA / warp-spec。
->
-> **硬件门槛**：`sm_90+`（实测 RTX 5090 / sm_120）。
-
-**标题**：`B-08. Hopper TMA：从单线程 Bulk Copy 到吞吐墙（何时该上、何时别上）`
-
-**与前后章的边界**
-
-| 已有章节 | 已覆盖 | B-08 应深化 / 避免重复 |
-|---|---|---|
-| B-01 | TMA 叙事、multicast 概念钩子 | 做成 **可复现 micro-bench + 决策表**；multicast/DSM 一句话挂钩，不展开 |
-| B-02 | bank / swizzle | TMA swizzle mode 只强调「落地后仍要对齐 B-02」；不重做 bank 教程 |
-| B-07 | Ampere `cp.async` / pipeline / intensity 曲线 | 回答 **指令带宽墙 / 多维 tile / 单线程 issue**；不重跑 2/4-stage Ampere 全家桶（只留最小对照） |
-| Module D / FA3 | 生产 GEMM / Attention | warp-spec + WGMMA **扩展阅读 only** |
-
-**TL;DR 目标结论（写作时先写死 5 条）**
-
-1. TMA 是 **专用异步拷贝引擎**（GMEM↔SMEM；亦可 cluster DSM）；与 B-07 的 SM 内 `cp.async`、B-06 的 Host CE **不是一层**。
-2. 收益核心是 **单线程 issue + descriptor 卸地址/边界/predication** → 省寄存器与指令带宽；不是「单次延迟一定更短」（Luo et al. 完整路径可 **+~170 cycle**，需大 tile / compute overlap 摊销）。
-3. **该上**：大 tile、多维/跨步、地址计算或 copy 循环本身吃指令带宽、需要与 compute 深度重叠。
-4. **别上 / 先别上**：小块、对齐/尺寸不满足、descriptor 重建过频（PyTorch Triton TMA 反例）、已 compute-bound 且 B-07 pipeline 已够用。
-5. 同步模型：G2S 用 `mbarrier` + `expect_tx`；S2G 常走 **bulk async-group**——混用是高频坑。
-
-**建议正文结构**
-
-1. **问题定义**：B-07 之后仍可能卡在「每线程算地址 + 发一堆 copy」——对照表：`cp.async` vs TMA。
-2. **物理模型**：tensor map / 坐标 vs 指针；单线程 elect；旁路 L1、受 L2 影响的实证含义（引 arXiv:2501.12084）。
-3. **API 分层**：① 1D `cp.async.bulk` ② `cuTensorMapEncode*` + `cp.async.bulk.tensor` ③ CCCL / `cuda::memcpy_async`（注明 Hopper+ 可能已走 TMA 回退路径，对照实验要用显式 bulk）④ CuTe/CUTLASS（扩展）。
-4. **同步与完成**：`mbarrier` tx 字节记账 vs `bulk_group`；init → expect_tx → issue → arrive/wait 顺序。
-5. **决策表**：何时 TMA、何时回退 B-07、何时只换引擎不做 overlap。
-6. **MVP 实验矩阵**：见下；主证据 CUDA event；SASS/NCU 有工具再做。
-7. **工程边界**：对齐与粒度；swizzle↔WGMMA 布局钩子；cluster multicast 一节挂钩；Blackwell 仍保留 cp.async。
-8. **扩展阅读**：Colfax TMA、FA3、ACTA、Cypress。
-9. **误区 + SOP + 钩子 → B-09 布局**。
-
-**MVP 可行性评估（路线 A；能做就做）**
-
-| 编号 | 配置 | 可行性（相对 RTX 5090 / CUDA 12+） | 本章裁决 |
+| 篇章 | 主题 | 文章 | 示例 |
 |---|---|---|---|
-| A | sync 或 B-07 风格 `cp.async` 最小基线（公平对照，避免笼统 `memcpy_async` 在 sm_90+ 上静默走 TMA） | ✅ 低风险，模式已有 | **必做** |
-| B | 1D `cp.async.bulk` + `mbarrier`（无/弱 compute overlap） | ✅ 官方路径清晰，无需 tensor map | **必做（主路径）** |
-| C | 2D `cuTensorMapEncodeTiled` + `cp.async.bulk.tensor` G2S | ✅ 样板成熟，样板代码量中等 | **必做**（对齐 B-07「多维」钩子） |
-| D | B/C + FMA intensity 扫（同 B-07 叙事） | ✅ 依赖 B/C | **必做**（主结论载体） |
-| E | tile 尺寸扫（小→大，对齐 ACTA「配置敏感」叙事） | ✅ 参数化即可 | **可选**：D 稳定后再加 |
-| F | SASS / NCU 旁证（TMA issue、对比指令数） | ⚪ 依赖本机 `cuobjdump`/`ncu`（B-07 已有脚本范式） | **可选**：有工具就做 |
-| — | cluster multicast / DSM / WGMMA 耦合 / 完整 warp-spec | ❌ 复杂度与 Module D 重叠 | **本章不做**（扩展阅读一句带过） |
+| 1 / A-01 | CUDA 核心概念总览与演进 | `article/01_cuda_basic/A-01*.md` ✅ | `examples/01_cuda_basics/01_hello_modern.cu` ✅ |
+| 2 / A-02 | GPU 硬件架构深度解析 | `article/01_cuda_basic/A-02*.md` ✅ | `examples/01_cuda_basics/02_hardware_query.cu` ✅ |
+| 3 / A-03 | 编程模型物理映射（GTE/SM/Warp） | `article/01_cuda_basic/A-03*.md` ✅ | `examples/01_cuda_basics/03_grid_mapping.cu` ✅ |
+| 4 / A-04 | 线程调度：SIMT / Divergence / Replay | `article/01_cuda_basic/A-04*.md` ✅ | `examples/01_cuda_basics/04_warp_divergence.cu` ✅ |
+| 5 / A-05 | Kernel 结构与 ABI / SASS 视角 | `article/01_cuda_basic/A-05*.md` ✅ | `examples/01_cuda_basics/05_kernel_structure.cu` ✅ |
+| 6 / A-06 | CUDA 工具链：NVCC / NVRTC | `article/01_cuda_basic/A-06*.md` ✅ | `examples/01_cuda_basics/06_nvrtc_jit.cpp` ✅ |
+| 7 / A-07 | 内存模型全景：UVA / Memory Spaces | `article/01_cuda_basic/A-07*.md` ✅ | `examples/01_cuda_basics/07_memory_spaces.cu` ✅ |
+| 8 / A-08 | 异步执行：Stream / Event / Pipeline | `article/01_cuda_basic/A-08*.md` ✅ | `examples/01_cuda_basics/08_async_pipeline.cu` ✅ |
+| 9 / A-09 | 调试与错误诊断：Compute Sanitizer | `article/01_cuda_basic/A-09*.md` ✅ | `examples/01_cuda_basics/09_debug_and_sanitizer.cu` ✅ |
+| 10 / A-10 | 性能建模：Roofline / SOL | `article/01_cuda_basic/A-10*.md` ✅ | `examples/01_cuda_basics/10_roofline_demo.cu` ✅ |
 
-**最小可复现实验（`08_tma_intro.cu`）**
+示例组织：扁平单文件 `examples/<module>/<NN>_<topic>.cu`（配套脚本同目录）。
 
-| 编号 | 配置 | 要回答的问题 |
+---
+
+## 4. Module B：内存体系与访存优化 🟡
+
+> **目标**：攻克 Memory Wall；从访问模式、缓存策略到异步搬运流水线的系统化方法。
+
+### 4.1 章节索引
+
+| 篇章 | 主题 | 状态 | 文章 / 示例 | 大纲 |
+|---|---|---|---|---|
+| 11 / B-01 | Global Memory：Coalescing / 向量化 / TMA 视角 | ✅ | `B-01*.md` / `01_global_mem_bandwidth.cu` | —（早期章，以正文为准） |
+| 12 / B-02 | Shared Memory：Bank / Padding / Swizzle | ✅ | `B-02*.md` / `02_shared_mem_bank_conflict.cu` | — |
+| 13 / B-03 | 寄存器压力与 Spilling / Occupancy | ✅ | `B-03*.md` / `03_register_spill.cu` | — |
+| 14 / B-04 | L2 Cache 行为与 Residency | ✅ | `B-04*.md` / `04_l2_residency.cu` | — |
+| 15 / B-05 | Unified Memory：Fault / Prefetch / Advise | ✅ | `B-05*.md` / `05_unified_memory_pf.cu` + results/plot | — |
+| 16 / B-06 | Pinned Memory 与 DMA / Overlap | ✅ | `B-06*.md` / `06_pinned_dma.cu` + results/plot | [大纲](CUDA专栏大纲/B-06_pinned_dma.md) |
+| 17 / B-07 | Async Copy / Pipeline（GMEM→SMEM） | ✅ | `B-07*.md` / `07_cp_async_pipeline.cu` + results/plot | [大纲](CUDA专栏大纲/B-07_cp_async.md) |
+| 18 / B-08 | Hopper TMA：Bulk Copy 与吞吐墙 | ✅ | `B-08*.md` / `08_tma_intro.cu` + results/plot | [大纲](CUDA专栏大纲/B-08_tma.md) |
+| 19 / B-09 | 数据布局（AoS / SoA / Transpose） | ✅ | `B-09*.md` / `09_layout_transform.cu` + results/plot | [大纲](CUDA专栏大纲/B-09_layout.md) |
+| 20 / B-10 | Module B Checklist（症状→证据→处方） | ⏳ | — | [大纲](CUDA专栏大纲/B-10_checklist.md) |
+
+路径前缀：文章 `article/02_memory_optim/`，示例 `examples/02_memory_optim/`。
+
+### 4.2 当前焦点
+
+1. **B-10**：按 [B-10 大纲](CUDA专栏大纲/B-10_checklist.md) 汇总 B-01～B-09，默认不新开 micro-bench
+2. （B-09 实测已落盘：RTX 5090，见 `docs/results/B-09_*`）
+
+### 4.3 工程索引型最低交付（新章）
+
+- 可运行 micro-bench（`examples/.../0N_*.cu`）
+- 主证据：CUDA event median → `docs/results/`
+- NCU/NSYS/SASS 为旁证（按章大纲裁决）
+
+---
+
+## 5. 每篇文章的固定结构（模板）
+
+新章大纲必须覆盖下列块（完整示例见 B-07/B-08/B-09 分册）：
+
+1. **要解决的问题**：一句话定义瓶颈与场景边界
+2. **结论先行**：3–5 条工程可执行结论（What to do / What not to do）
+3. **最小复现实验（MVP）**：可运行代码 + 参数 + 预期现象；可行性表标清必做/可选/不做
+4. **证据链**：主证据落盘 `docs/results/`；旁证按需
+5. **优化路径**：诊断 → 修改 → 回归验证
+6. **常见误区** + SOP + 下一章钩子
+7. **参考文献池**：官方 / 工程 / 高质量实证 / 前沿（分层）
+
+写稿流程见仓库 skill：`.cursor/skills/aspl-cuda-article/SKILL.md`。
+
+---
+
+## 6. Module C / D / E（远期）
+
+| 模块 | 一句话 | 大纲 |
 |---|---|---|
-| A | sync / 显式 Ampere 风格 copy 基线 | 公平对照时延/吞吐？ |
-| B | 1D bulk + mbarrier，立刻 wait | 换引擎本身开销/吞吐？ |
-| C | 2D tensor-map tile G2S + mbarrier | 多维搬运能否稳住有效带宽？ |
-| D | B 或 C + intensity 扫 | 加速比 vs AI：能否摊销 TMA+barrier 固定开销？ |
-| E（可选） | 扫 tile 边长 / bytes | 过小被开销吃掉、过大撞 SMEM？ |
-| F（可选） | SASS/NCU：A vs B/C | 是否出现 TMA 类指令、issue 是否下降？ |
-
-**证据最低要求**：CUDA event median 时延或有效带宽；**D 的 intensity 扫表**写入 `docs/results/B-08_tma_*.md`（主结论）。旁证：有 NCU/SASS 则至少一组 A vs B/C。启动打印 `sm_XX`；非 sm_90+ 直接失败并提示。
-
-**参考文献池（与正文参考文献节对齐）**
-
-- 官方：CUDA Programming Guide — [Asynchronous Data Copies](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html)（1D bulk vs tensor map、`mbarrier`/`expect_tx`、store/`bulk_group`）；[Hopper Architecture In-Depth](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/)；Hopper Tuning Guide；[CCCL TMA](https://nvidia.github.io/cccl/unstable/cccl/tma.html)
-- 工程教程：Colfax [Mastering Hopper TMA](https://research.colfax-intl.com/tutorial-hopper-tma/)；MLC.ai [Pipelining GEMM with TMA](https://mlc.ai/modern-gpu-programming-for-mlsys/chapter_gemm_async/index.html)；PyTorch [Hopper TMA for FP8 GEMMs](https://pytorch.org/blog/hopper-tma-unit/)（descriptor 开销反例）
-- 高质量实证：Luo et al., IPDPS’24 / [arXiv:2402.13499](https://arxiv.org/abs/2402.13499)；Luo et al., [arXiv:2501.12084](https://arxiv.org/abs/2501.12084)（TMA 延迟/吞吐专章，~+170 cycle）
-- 扩展阅读：Shah et al., FlashAttention-3（NeurIPS’24 / [arXiv:2407.08608](https://arxiv.org/abs/2407.08608)）；ACTA（GPGPU’25 / [DOI:10.1145/3725798.3725802](https://doi.org/10.1145/3725798.3725802)）；Yadav et al., Cypress（PLDI’25 / [arXiv:2504.07004](https://arxiv.org/abs/2504.07004)）；Colfax GEMM pipelining / CUTLASS Pipeline
+| C | Warp / CG / Atomics / Fusion / Graph | [Module-C.md](CUDA专栏大纲/Module-C.md) |
+| D | Reduce → Softmax/LN → GEMM/Tensor Core | [Module-D.md](CUDA专栏大纲/Module-D.md) |
+| E | Python 扩展 → profiler → 部署；目录未建 | [Module-E.md](CUDA专栏大纲/Module-E.md) |
 
 ---
 
-## 4. Module C：核心编程技巧与并发原语（21–30）⏳
+## 7. Bench & Profiling 闭环
 
-> **模块目标**：让“正确性、可维护性、可调优性”成为 CUDA 工程默认配置（而不是靠经验主义）。
+### 7.1 章节实验（主入口）
 
-建议按仓库落地方式定义：每篇对应一个 `examples/03_compute_primitives/<NN>_*.cu`，并至少给一个可被 NCU/NSYS 验证的结论。
+- Module A：`examples/01_cuda_basics/*.cu`
+- Module B：`examples/02_memory_optim/01_*.cu` … `09_*.cu`
+- 实测摘要：`docs/results/B-05_*` … `B-09_*`
 
-可覆盖主题（建议）：
+### 7.2 脚本与结果
 
-- Warp primitives（ballot/shfl、warp-level reduce/scan）
-- Cooperative Groups / Cluster（若覆盖 Hopper/Blackwell）
-- Atomics 与 contention（global/shared、分桶/分层规约）
-- Kernel fusion 的代价与边界（register pressure、occupancy）
-- CUDA Graph 与 launch overhead（与 Module E 联动）
-
----
-
-## 5. Module D：计算原语与高级算子实现（31–40）⏳
-
-> **模块目标**：从“会写 kernel”走向“能写出接近库级质量的 kernel”，形成算子实现范式。
-
-建议落地策略：
-
-- 先做 **Reduction / Softmax / LayerNorm** 这类通用算子（易评测、易验证）
-- 再做 **GEMM 相关（Tensor Core）**（需要更完整的矩阵分块与数据布局）
-
----
-
-## 6. Module E：深度学习工程实战与系统集成（41–50）⏳
-
-> **模块目标**：把“kernel 优化”放回真实工程链路：Python → C++ 扩展 → profiler → benchmark → 部署形态。
-
-### 6.1 与仓库现状的对齐（重要）
-
-总规划中写了 `examples/05_dl_engineering/...` / Python 绑定等完整树；**当前仓库已删除占位 `python/`、`include/`、`src/`**，Module E 仅保留规划文档。
-
-对 41–50 明确标注：
-
-- **“规划中：目录/代码尚未落地”**
-- 每落地一篇，再新建对应路径（文章/示例/脚本）
-
----
-
-## 7. 本仓库的 CUDA Bench & Profiling 闭环（建议读者必跑）
-
-### 7.1 章节实验（主入口）✅
-
-- `examples/01_cuda_basics/*.cu`：Module A
-- `examples/02_memory_optim/01_*.cu` … `07_*.cu`：Module B（含 B-07 intensity sweep）
-- 实测摘要：`docs/results/B-05_*` / `B-06_*` / `B-07_*`
-
-### 7.2 脚本与结果目录 ✅
-
-- `scripts/plot_b05_unified_memory.py` / `plot_b06_pinned_dma.py` / `plot_b07_cp_async.py`：正文实测图
-- `scripts/dump_sass.sh` → `docs/sass/`（可选；章节也可用 `examples/**/0N_dump_sass.sh`）
+- `scripts/plot_b05_*.py` … `plot_b09_layout.py`：正文实测图
+- `scripts/dump_sass.sh` → `docs/sass/`（可选；章节亦可用 `examples/**/0N_dump_sass.sh`）
 - `scripts/profile_ncu.sh` → `docs/results/ncu/`（按需）
 - `scripts/parse_roofline.py` / `plot_roofline.py`：Roofline 辅助
-- `docs/results/perf_table.md`：对比表占位
 
 ---
 
-## 8. 后续维护建议（让规划“长期不漂移”）
+## 8. 维护约定（防漂移）
 
-- **规划文档只写“真实路径”**：落地后再补链接，不预设不存在的目录树
-- **每章三件套**（建议强制）：文章 + 可运行代码 + 可复现指标（NSYS/NCU/SASS 任一）
-- **将“规划 vs 已实现”显式标记**：避免读者/协作者误判仓库完成度
-
+1. **导航本文件只写真实路径与状态**；长大纲进 `CUDA专栏大纲/`。
+2. **新章**：新建 `CUDA专栏大纲/B-0N_<topic>.md` → 本表加一行 → 用户确认后再写代码/正文。
+3. **每章三件套**：文章 + 可运行代码 + 可复现指标（需要实测的章）。
+4. **已落地章**：大纲分册可保留供对照；以正文与 `docs/results/` 为准。
+5. **规划 vs 已实现**必须显式标记（✅ / 🟡 / ⏳）。

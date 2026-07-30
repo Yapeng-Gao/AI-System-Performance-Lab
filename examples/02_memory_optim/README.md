@@ -3,7 +3,7 @@
 本目录是专栏 Module B 的配套实验代码。正文在 `article/02_memory_optim/`。  
 仓库整体目录用途见 [`docs/仓库架构与现状.md`](../../docs/仓库架构与现状.md)。
 
-**正文插图**：原理用短 ASCII；B-05～B-08 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
+**正文插图**：原理用短 ASCII；B-05～B-09 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
 
 ## 目录
 
@@ -17,6 +17,7 @@
 | **B-06** | `06_pinned_dma.cu` + `06_profile_*.sh` | Pinned / DMA / Overlap | `docs/results/B-06_*`；`python scripts/plot_b06_pinned_dma.py` |
 | **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
 | **B-08** | `08_tma_intro.cu` | Hopper+ TMA bulk / tensor-map（**sm_90+**） | `docs/results/B-08_*`；`python scripts/plot_b08_tma.py` |
+| **B-09** | `09_layout_transform.cu` | AoS/SoA + tiled transpose（**不限 sm_90+**） | `docs/results/B-09_*`；`python scripts/plot_b09_layout.py` |
 
 ## 🚀 快速开始
 
@@ -439,9 +440,46 @@ DO_NCU=1 bash examples/02_memory_optim/07_profile_cp_async_pipeline.sh
 
 # 有 CSV 后重画：
 python scripts/plot_b08_tma.py
+
+# 可选旁证（NCU；忽略附着时程序自打印的 ms）：
+DO_NCU=1 bash examples/02_memory_optim/08_profile_tma.sh ncu-only
+# SASS：bash examples/02_memory_optim/08_dump_sass.sh
 ```
 
 结果：`docs/results/B-08_tma.md`。配套文章：`article/02_memory_optim/B-08*.md`。
+
+---
+
+### 第 19 章 / B-09：数据布局 (`09_layout_transform.cu`)
+
+AoS vs SoA（按 `touch_fields`）+ 矩阵 copy / transpose（**不限 sm_90+**）：
+
+| mode | 含义 |
+|------|------|
+| `aos` / `soa` | 宽记录 8×float，读写前 k 个字段 |
+| `copy` | 方阵 copy（transpose 上限） |
+| `transpose_naive` | 跨步写 |
+| `transpose_tiled` / `transpose_pad` | SMEM tile 重排（±pad） |
+| `sweep` | 扫 `touch_fields∈{1,2,4,8}`，SoA/AoS 加速比 CSV |
+| `modes` | layout + transpose 全表（末尾带 CSV 块） |
+
+#### 运行示例
+
+```bash
+# 主证据：
+./bin/02_memory_optim_09_layout_transform --mode sweep
+
+# transpose + touch=1 全表：
+./bin/02_memory_optim_09_layout_transform --mode modes
+
+# 有 CSV 后重画：
+python scripts/plot_b09_layout.py
+
+# 可选旁证（sectors/request；忽略附着时程序自打印的 ms）：
+DO_NCU=1 bash examples/02_memory_optim/09_profile_layout.sh ncu-only
+```
+
+结果：`docs/results/B-09_layout.md`。配套文章：`article/02_memory_optim/B-09*.md`。
 
 ---
 
@@ -453,6 +491,9 @@ python scripts/plot_b08_tma.py
 - `06_profile_pinned_dma.sh`：B-06 Pinned/DMA 批量对照（可选 `DO_NSYS=1` 采集 overlap 时间线）
 - `07_profile_cp_async_pipeline.sh`：B-07 设备内 async/pipeline 批量对照（可选 `DO_NCU=1`）
 - `07_dump_sass.sh`：B-07 导出 SASS，核对 `LDGSTS` / `CP.ASYNC`
+- `08_profile_tma.sh`：B-08 TMA 批量对照（可选 `DO_NCU=1` / `ncu-only`）
+- `08_dump_sass.sh`：B-08 导出 SASS，核对 TMA / bulk 路径
+- `09_profile_layout.sh`：B-09 AoS/SoA/transpose 批量对照（可选 `DO_NCU=1` sectors/request）
 
 ## 📝 注意事项
 
@@ -464,6 +505,7 @@ python scripts/plot_b08_tma.py
 - **架构要求**：
   - Async Copy Pipeline：需要计算能力 8.0+（Ampere 及以上）
   - **TMA（B-08）**：需要计算能力 **9.0+**（Hopper / Blackwell）
+  - **Layout（B-09）**：无 sm_90+ 硬门槛（合并是全架构问题）
   - L2 Persistence：需要计算能力 8.0+（Ampere 及以上）
   - LDG.NT：需要计算能力 7.0+（Volta 及以上）
 

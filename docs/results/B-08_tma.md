@@ -55,9 +55,58 @@ CSV：`docs/results/B-08_sweep.csv`。重画：`python scripts/plot_b08_tma.py`�
 2. **重叠才是产品**：`pipe2` 在 `fma=1` 达约 **1.69×**，随后随 AI 回落到 ~1.02×。  
 3. 与正文标题一致：TMA 引擎本身不是免费午餐；**prefetch ∥ compute** 才藏延迟。
 
+## NCU 旁证（`fma_iters=1`，RTX 5090 / sm_120）
+
+```bash
+DO_NCU=1 bash examples/02_memory_optim/08_profile_tma.sh ncu-only
+```
+
+> **不要**把 ncu 附着时程序自打印的 ms/GB/s 当结论（会被 replay 放大到秒级）。下表来自 `ncu --import … --page details` / CLI metrics。
+
+### WarpState + MemoryWorkload
+
+| mode | Mem Throughput | Max Bandwidth | Warp cycles / issued | 主导 stall（NCU OPT） | Est. Local Speedup |
+|------|----------------|---------------|----------------------|----------------------|--------------------|
+| `sync` | 351 GB/s | 19.9% | 14.12 | **L1TEX scoreboard** ~53%（等全局/TEX 数据） | 53.5% |
+| `bulk1d` | 338 GB/s | 19.2% | 12.08 | **branch target** ~30%（控制流 / elect·barrier） | 30.2% |
+| `pipe2` | **742 GB/s** | **42.1%** | **8.39** | **fixed latency** ~34%（短依赖） | 34.2% |
+
+### 指令量（`smsp__inst_executed.sum`，同 launch：512 warps）
+
+| mode | inst_executed | vs sync |
+|------|---------------|---------|
+| `sync` | 4 124 160 | 1.00× |
+| `bulk1d` | 4 668 448 | **1.13×**（更多，不是更少） |
+
+### 怎么读（与裸跑 `sweep` 对齐）
+
+1. **`pipe2` 才像产品**：吞吐约 **2.1×** sync、issue 间隔从 14.1→8.4 cycle；主导 stall 从「等 L1TEX」转到「短依赖」——和 event 低 AI ~**1.69×** 同向。  
+2. **`bulk1d` 立刻 wait ≈ 换皮**：Mem Throughput 与 sync 同量级（338 vs 351）；stall 从 L1TEX 换成 branch，**没有**带宽翻倍。  
+3. **本 microbench 未证明「换 TMA 就少指令」**：4 KiB tile + 全 block `mbarrier` 协议下，`bulk1d` 的 `inst_executed` 反而多 ~13%。卸地址/发令压力更适合大 tile / 多维 / warp-spec；本章主结论仍是 **overlap**。
+
+## SASS 旁证（sm_90 + sm_120）
+
+```bash
+bash examples/02_memory_optim/08_dump_sass.sh
+```
+
+落盘：`docs/sass/{hopper,blackwell}/08_tma_intro.sass`。
+
+| 观察 | 含义 |
+|---|---|
+| **`UTMALDG.2D`**（hopper / blackwell 均有） | **tensor-map 2D TMA load** 已进二进制（`kernel_tensor2d` 路径） |
+| 多处 **`ELECT`** | `ptx::elect_sync` / 选举 issue 线程生效 |
+| **`EIATTR_MBARRIER_*`** | G2S 完成模型走 **mbarrier**（与正文同步节一致） |
+| `kernel_bulk1d` `.text` 仍可见 **`LDG.E` + `STS`** | 1D `memcpy_async_tx` 反汇编不如 2D 干净；与 NCU「bulk1d 吞吐≈sync」同向——**立刻 wait 的 1D 路径不是本章英雄** |
+| `kernel_sync` | 预期以 LDG+STS 为主（协作 sync load） |
+
+> 解读优先级：裸跑 `sweep` > NCU stall/吞吐 > SASS「路径是否存在」。SASS 证明 **TMA/elect/mbarrier 没写空**；不单独用 SASS 报加速比。
+
 ## 复现命令
 
 ```bash
 ./bin/02_memory_optim_08_tma_intro --mode sweep
 python scripts/plot_b08_tma.py
+DO_NCU=1 bash examples/02_memory_optim/08_profile_tma.sh ncu-only
+bash examples/02_memory_optim/08_dump_sass.sh
 ```
