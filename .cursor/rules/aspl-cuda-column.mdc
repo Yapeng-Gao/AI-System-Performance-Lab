@@ -1,0 +1,24 @@
+---
+description: ASPL CUDA 专栏硬约束——写稿/补实测/改 examples 时先走 aspl-cuda-article skill
+globs: article/**/*.md,docs/CUDA*/**,docs/results/**,examples/**/*.cu,examples/**/*.sh,scripts/plot_b*.py
+alwaysApply: false
+---
+
+# ASPL CUDA 专栏（精简硬约束）
+
+完整流程见 skill：`.cursor/skills/aspl-cuda-article/SKILL.md`。命中本规则文件时**先读该 skill 再动手**。
+
+## 必须遵守
+
+1. **主证据** = 裸跑 CUDA event **median**；禁止把 `ncu` 附着时程序自打印的 ms/GB/s 当结论。
+2. **用户一贴** sweep / NCU / SASS 输出 → 立刻落 `docs/results/` 并更新正文对应节（不要只口头解读）。
+3. **默认不加** `*_profile_*.sh`；用户明确要求批量 NCU/NSYS/SASS 才加。NCU 过滤：`--kernel-name-base function|demangled|mangled` + `--kernel-name regex:…`（不要把 kernel 名塞进 `-base`）。
+4. **新章**先大纲（`docs/CUDA专栏大纲/`）并等用户确认；局部任务（补数/改图/改 TL;DR）不重开全流程。
+5. **§7 扩展阅读**与 **§10 参考文献**去重：§7 ≤4 条出口；完整分层在 §10。
+6. 带宽/布局章：用 **useful payload**；提醒 L2 可能抬高绝对 GB/s，主看加速比形状。
+7. **不擅自 commit/push**；跳过仅换行符噪声的大纲文件。
+8. 不要把 Host CE、设备 `memcpy_async`、TMA bulk 混成一层；不要默认每章都要 sm_90+。
+
+## 收口一句话
+
+结论有数、边界清晰、主命令一条、旁证已落盘（若做了）→ 能停则停。
