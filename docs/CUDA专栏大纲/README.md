@@ -4,13 +4,13 @@
 
 | 文件 | 状态 | 说明 |
 |---|---|---|
-| [B-06_pinned_dma.md](B-06_pinned_dma.md) | ✅ | 已落地；对照审稿 |
-| [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；对照审稿 |
-| [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；对照审稿 |
-| [B-09_layout.md](B-09_layout.md) | ✅ | 已落地（含 RTX 5090 实测） |
-| [B-10_checklist.md](B-10_checklist.md) | ⏳ | Module B 收束 Checklist |
-| [Module-C.md](Module-C.md) | ⏳ | 并发原语（远期） |
+| [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；**新章样板**（对照审稿） |
+| [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板**（对照审稿） |
+| [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板**（含 RTX 5090 实测） |
+| [Module-C.md](Module-C.md) | ⏳ | 并发原语（**下一焦点**；开写前先出 C-01 分册大纲） |
 | [Module-D.md](Module-D.md) | ⏳ | 算子实现（远期） |
 | [Module-E.md](Module-E.md) | ⏳ | DL 工程集成（远期） |
+| [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
-**约定**：新章大纲新建 `B-0N_<topic>.md`（或 `C-0N_*.md`），在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。
+**约定**：新章大纲新建 `B-0N_<topic>.md`（或 `C-0N_*.md`），在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  
+**已落地章**：权威以正文 + `docs/results/` 为准；样板优先看 B-07～B-09，其余可进 `archive/`。

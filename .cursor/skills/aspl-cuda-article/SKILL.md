@@ -1,0 +1,193 @@
+---
+name: aspl-cuda-article
+description: >-
+  Writes AI-System-Performance-Lab CUDA column articles end-to-end (outline with
+  required literature research, micro-bench, measured results, markdown, figures)
+  or partial edits (cover-only, results-only, NCU/SASS paste, TL;DR, 收口评估).
+  Use when starting a chapter (C-01, Module C/D…, B-xx polish), 大纲优化, 写文章, 专栏稿, 调研文献,
+  补实测, 补NCU, 评估章节, or following the B-06～B-09 workflow — not for unrelated
+  product brainstorming.
+---
+
+# ASPL CUDA 专栏写稿
+
+面向本仓库的**工程索引型** CUDA 文章。默认对齐 **B-06～B-10** 已落地范式（B-09 起含 useful-payload / sectors；B-10 为 Checklist 无新 `.cu` 特例）。Module C 起沿用同一证据链，主题换并发原语。
+
+配套： [article-template.md](article-template.md) · [literature.md](literature.md) · 项目规则 `.cursor/rules/aspl-cuda-column.mdc`
+
+## 何时启用
+
+- 开始 `B-0N` / `A-0N` / Module 章、大纲优化、写文章、补实测、封面/原理图
+- 用户贴了 sweep / NCU / SASS 输出要落盘
+- 收口评估 / 「能不能停」
+
+## 与其他 skill 的关系
+
+本 skill **已含**「大纲 → 用户确认」门禁。写专栏章时：
+
+- **不要**再走完整 product brainstorming（多轮愿景 / Visual Companion / spec 落 `docs/superpowers/specs/`）。
+- 澄清时：一次只问一个与本章边界/MVP 相关的问题，然后给大纲。
+- 调试 / TDD 等通用 skill 可按需叠加；**流程骨架以本 skill 为准**。
+
+## 先分流：全流程 vs 局部任务
+
+| 用户意图 | 走哪条 |
+|---|---|
+| 开始新章 / 大纲优化 / 从 0 落地 | **全流程**（下方 0→6） |
+| 只优化封面/原理图 | 只改 `article/.../assets/` + 正文引用；不重开大纲 |
+| 只贴了实测 / NCU / SASS | **立刻**落 `docs/results/` + 改正文旁证/TL;DR + 必要时 plot；不重写机制章 |
+| 只改 TL;DR / SOP / 误区 / §7§10 去重 | 局部改正文；必要时回写规划 |
+| 只修 `.cu` / profile 脚本 bug | 改代码/脚本；若影响口径再改结果节 |
+| 只要评估能否发布 | 走 §6 收口清单；能停则停，列出 P0/P1 |
+
+局部任务也先读该章正文与规划对应小节，避免和已写边界冲突。
+
+## 模块路径
+
+| 章节前缀 | article | examples |
+|---|---|---|
+| A-xx | `article/01_cuda_basic/` | `examples/01_cuda_basics/` |
+| B-xx | `article/02_memory_optim/` | `examples/02_memory_optim/` |
+| C-xx | `article/03_compute_primitives/`（落地时建） | `examples/03_compute_primitives/`（落地时建；**勿先建空 README**） |
+| 更后 Module | 以 `docs/CUDA专栏规划.md` + `docs/CUDA专栏大纲/` 为准 | 同左 |
+
+封面：`article/<module>/assets/<章号>-<topic>-cover.png`；原理图：同目录 `assets/`。
+
+## 硬约束（来自本系列实战）
+
+1. **新章先大纲后实现**：`docs/CUDA专栏大纲/B-0N_<topic>.md` 或 `C-0N_<topic>.md` 写满边界 / TL;DR×5 / 结构 / MVP / 文献池；`docs/CUDA专栏规划.md` 总表加链接；**用户确认后再写代码与正文**。局部任务跳过。
+2. **能做就做，做不了就标不做**：MVP 按硬件/API 可行性裁决；不做的写进大纲并说明原因。
+3. **默认不写 shell 包装**：主证据一条 binary（如 `--mode sweep`）。**仅当**用户明确要批量 NCU/NSYS/SASS，或多步不可避免时，才加 `0N_profile_*.sh` / `0N_dump_sass.sh`（对齐 B-07/B-08/B-09）。
+4. **主证据 = 裸跑 CUDA event median**；NCU/NSYS/SASS 为旁证。**禁止**把 `ncu` 附着时程序自打印的 ms/GB/s 当结论（会被 replay 放大）。
+5. **硬件门槛以该章大纲为准**（sm_80+ / sm_90+ / 不限）。写作机可能无目标 GPU；给**可粘贴命令**，用户一贴输出就落盘——不要干等或只口头解读。
+6. **不擅自 commit / push**；用户明确要求再提交。Commit 时跳过「仅换行符」噪声文件（常见于 `docs/CUDA专栏大纲/`）。
+7. **§7 扩展阅读 ≠ §10 参考文献抄两遍**：§7 只留 2～4 条「不抢后续 Module」+ 可选下一章钩子；完整分层目录在 §10；§7 条目用「见 §10-x」去重（见 [article-template.md](article-template.md)）。
+
+## 工作流（新章全流程 0→6）
+
+```text
+- [ ] 0. 读上下文
+- [ ] 1. 大纲 + 文献池 → 用户确认；导航总表加行
+- [ ] 2. MVP 代码 + CMake 可见
+- [ ] 3. 跑通实测 / 收 CSV（写作机无卡则给命令等用户贴）
+- [ ] 4. 正文 + 封面/原理图 + plot
+- [ ] 5. 回填规划状态 / README / examples README
+- [ ] 6. 收口评估（能停则停）
+```
+
+### 0. 读上下文
+
+必读：
+
+- `docs/CUDA专栏规划.md`（该章行 + §5）+ 相邻章大纲
+- 上一章正文「下一章钩子」与边界表
+- 同 module 最近一章 `0N_*.cu`（CLI、计时、`--mode`）
+- `docs/仓库架构与现状.md`
+
+弄清：**本章深化什么 / 严禁重复什么 / 钩子给谁 / 硬件门槛**。
+
+### 1. 大纲 + 文献
+
+新建大纲（对齐 B-07/B-08/B-09 分册）并在导航总表加链接。必含：标题、边界表、TL;DR×5、正文结构、MVP 可行性、最小实验表、证据最低要求、参考文献池。
+
+默认写作路线：**Microbench-first**（与已落地章同构）。等用户确认后再实现。
+
+文献调研规则见 [literature.md](literature.md)（大纲阶段**不可跳过**）。
+
+### 2. MVP 代码
+
+| 产物 | 路径 |
+|---|---|
+| 示例 | `examples/<module>/0N_<topic>.cu`（CMake GLOB，**增删后重跑 cmake**） |
+| 结果 | `docs/results/B-0N_*.md` + `.csv` |
+| 绘图 | `scripts/plot_b0N_*.py` → `article/.../assets/` |
+| 正文 | `article/<module>/B-0N.*.md` |
+
+代码习惯：
+
+- `--mode` 多配置；`sweep` CSV 作主结论载体
+- 启动打印 GPU 名 / `sm_XX`；CC 不够则清晰退出
+- 防 DCE：结果写回 device 可见存储
+- 尾块 / 越界：tile 循环 clamp
+- 计时：warmup + 多次 run → **median**
+- 布局类：带宽用 **useful payload**（触达字段字节），禁止整 struct 赋值冒充「单字段跨步」
+
+### 3. 实测（含旁证）
+
+- 主命令一条；编译门槛写清（5090 常用 `CMAKE_CUDA_ARCHITECTURES=120`，非每章必需）
+- **用户一贴** sweep/表/NCU/SASS：立刻写入 `docs/results/` + 更新正文对应节与 TL;DR；有 CSV 则跑 plot
+- 绝对 GB/s 可能含 **L2**：正文必须写「主看加速比/相对形状，勿当总线利用率」（见 B-09）
+
+#### 3.1 NCU / SASS 脚本约定（用户明确要求时）
+
+对齐 `07_profile_*` / `08_profile_tma` / `09_profile_layout`：
+
+- 支持 `DO_NCU=1` 与 `ncu-only`（只跑旁证、不重跑全 sweep）
+- **`--kernel-name-base` 只能是** `function` | `demangled` | `mangled`；过滤名用 `--kernel-name regex:kernel_foo`
+- SASS dump：按 **`.text._Z…kernel_…` 段**截取；证明路径用 `UTMALDG` / `LDGSTS` / `ELECT` / `EIATTR_MBARRIER` 等，**不要**用「文件里出现 LDG+STS」误判「没走 TMA」（sync 对照与 1D 降级都可能有 LDG+STS）
+- SASS/NCU **不单独报加速比**；与裸跑 event 互证
+- `*.ncu-rep` / `*.nsys-rep` 进 `.gitignore`
+
+### 4. 正文
+
+骨架见 [article-template.md](article-template.md)。要点：
+
+- 封面 + 承接上章引用块；**TL;DR 带本机数字**
+- 原理：短 ASCII 或 1～2 张原理图；图注中文
+- 决策表 / SOP / 误区 / 钩子
+- §7 与 §10 **去重**（硬约束 7）
+- 实测：表 + 图；口径写明 median；有 NCU 则 §5.x 旁证小节
+
+封面风格：深色底、青/琥珀；忌紫光堆徽章。设备内拷贝图例标 **GMEM→SMEM**（勿写成 Host CE / H2D）。
+
+### 5. 仓库状态回填
+
+- `docs/CUDA专栏规划.md`：状态 ✅/🟡 + 大纲链接
+- 该章大纲顶部状态与交付说明
+- 根 `README.md`、`examples/<module>/README.md`
+- `docs/仓库架构与现状.md`（若有章节表）
+
+### 6. 收口
+
+| 检查项 | 通过标准 |
+|---|---|
+| 结论有数 | TL;DR / 实测表含本机数字或明确「待测」 |
+| 边界清晰 | 不重讲上章；不做的在大纲/边界写明 |
+| 主命令一条 | binary `--mode sweep`（或章内等价） |
+| 脚本 | 无用户未要的 profile 壳；要了则 `ncu-only` 可用 |
+| 口径 | 未把 ncu 附着 ms 当结论；带宽章有 L2/useful 提醒 |
+| §7§10 | 无大段重复链接 |
+| 旁证（若做了） | 已落 `docs/results/` + 正文小节 |
+
+**能停则停**。P1（NCU/SASS/图注）不阻塞发布，除非用户要求补。
+
+评估时对比相邻已发布章；区分「发布门槛」与「锦上添花」。
+
+## 反模式
+
+- 未确认大纲就写长文；大纲跳过文献调研
+- 文献堆链接却无一条进 TL;DR/决策表；凭记忆编 DOI/arXiv
+- 局部任务却重开全流程
+- 默认加 profile shell；或 `--kernel-name-base kernel_foo`（非法）
+- Host CE / 设备 `memcpy_async` / TMA bulk 混成一层
+- 重讲上章；边界表形同虚设
+- 无实测写死绝对加速比；用户已贴数却不落盘
+- 默认每章都要 sm_90+ / TMA
+- 用 ncu 附着时墙钟 ms 写进 TL;DR
+- 宣称「换 TMA/SoA 就少指令」却无 `inst_executed` / sectors 证据
+- §7 与 §10 整页重复
+- 过度美化拖延下一章；被 brainstorming 带去写无关 product spec
+
+## 快速启动话术
+
+新章：
+
+> 按 aspl-cuda-article skill 开始 C-01：先读规划、Module-C.md 与 B-10 钩子，出 C-01 大纲+文献，确认后再实现（目录随首章落地再建，勿空壳）。
+
+局部（贴数）：
+
+> 按 aspl-cuda-article：根据下面 NCU/sweep 输出更新 B-0N 实测与旁证节。
+
+收口：
+
+> 按 aspl-cuda-article §6 评估 B-08/B-09 能否停。

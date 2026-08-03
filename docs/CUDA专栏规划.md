@@ -47,7 +47,7 @@
 | 模块 | 范围 | 状态 | 大纲 |
 |---|---|---|---|
 | **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | ✅ | 见下表（无独立长大纲分册） |
-| **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | 🟡 B-01～B-09 ✅；B-10 ⏳ | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
+| **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | ✅ B-01～B-10 | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
 | **C** 核心编程技巧与并发原语 | 21–30 | ⏳ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
 | **D** 计算原语与高级算子 | 31–40 | ⏳ | [`CUDA专栏大纲/Module-D.md`](CUDA专栏大纲/Module-D.md) |
 | **E** DL 工程实战与系统集成 | 41–50 | ⏳ | [`CUDA专栏大纲/Module-E.md`](CUDA专栏大纲/Module-E.md) |
@@ -75,7 +75,7 @@
 
 ---
 
-## 4. Module B：内存体系与访存优化 🟡
+## 4. Module B：内存体系与访存优化 ✅
 
 > **目标**：攻克 Memory Wall；从访问模式、缓存策略到异步搬运流水线的系统化方法。
 
@@ -88,18 +88,18 @@
 | 13 / B-03 | 寄存器压力与 Spilling / Occupancy | ✅ | `B-03*.md` / `03_register_spill.cu` | — |
 | 14 / B-04 | L2 Cache 行为与 Residency | ✅ | `B-04*.md` / `04_l2_residency.cu` | — |
 | 15 / B-05 | Unified Memory：Fault / Prefetch / Advise | ✅ | `B-05*.md` / `05_unified_memory_pf.cu` + results/plot | — |
-| 16 / B-06 | Pinned Memory 与 DMA / Overlap | ✅ | `B-06*.md` / `06_pinned_dma.cu` + results/plot | [大纲](CUDA专栏大纲/B-06_pinned_dma.md) |
+| 16 / B-06 | Pinned Memory 与 DMA / Overlap | ✅ | `B-06*.md` / `06_pinned_dma.cu` + results/plot | [归档](CUDA专栏大纲/archive/B-06_pinned_dma.md) |
 | 17 / B-07 | Async Copy / Pipeline（GMEM→SMEM） | ✅ | `B-07*.md` / `07_cp_async_pipeline.cu` + results/plot | [大纲](CUDA专栏大纲/B-07_cp_async.md) |
 | 18 / B-08 | Hopper TMA：Bulk Copy 与吞吐墙 | ✅ | `B-08*.md` / `08_tma_intro.cu` + results/plot | [大纲](CUDA专栏大纲/B-08_tma.md) |
 | 19 / B-09 | 数据布局（AoS / SoA / Transpose） | ✅ | `B-09*.md` / `09_layout_transform.cu` + results/plot | [大纲](CUDA专栏大纲/B-09_layout.md) |
-| 20 / B-10 | Module B Checklist（症状→证据→处方） | ⏳ | — | [大纲](CUDA专栏大纲/B-10_checklist.md) |
+| 20 / B-10 | Module B Checklist（症状→证据→处方） | ✅ | `B-10*.md` + results 索引（无新 `.cu`） | [归档](CUDA专栏大纲/archive/B-10_checklist.md) |
 
 路径前缀：文章 `article/02_memory_optim/`，示例 `examples/02_memory_optim/`。
 
 ### 4.2 当前焦点
 
-1. **B-10**：按 [B-10 大纲](CUDA专栏大纲/B-10_checklist.md) 汇总 B-01～B-09，默认不新开 micro-bench
-2. （B-09 实测已落盘：RTX 5090，见 `docs/results/B-09_*`）
+1. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
+2. 下一焦点：**Module C**（见 `docs/CUDA专栏大纲/Module-C.md`）
 
 ### 4.3 工程索引型最低交付（新章）
 
@@ -111,7 +111,7 @@
 
 ## 5. 每篇文章的固定结构（模板）
 
-新章大纲必须覆盖下列块（完整示例见 B-07/B-08/B-09 分册）：
+新章大纲必须覆盖下列块（完整示例见 B-07/B-08/B-09 样板分册；B-06/B-10 大纲已进 `CUDA专栏大纲/archive/`）：
 
 1. **要解决的问题**：一句话定义瓶颈与场景边界
 2. **结论先行**：3–5 条工程可执行结论（What to do / What not to do）
@@ -125,7 +125,7 @@
 
 ---
 
-## 6. Module C / D / E（远期）
+## 6. Module C / D / E
 
 | 模块 | 一句话 | 大纲 |
 |---|---|---|
@@ -141,7 +141,7 @@
 
 - Module A：`examples/01_cuda_basics/*.cu`
 - Module B：`examples/02_memory_optim/01_*.cu` … `09_*.cu`
-- 实测摘要：`docs/results/B-05_*` … `B-09_*`
+- 实测摘要：`docs/results/B-05_*` … `B-09_*`；Checklist 索引 `B-10_checklist.md`
 
 ### 7.2 脚本与结果
 
@@ -155,7 +155,7 @@
 ## 8. 维护约定（防漂移）
 
 1. **导航本文件只写真实路径与状态**；长大纲进 `CUDA专栏大纲/`。
-2. **新章**：新建 `CUDA专栏大纲/B-0N_<topic>.md` → 本表加一行 → 用户确认后再写代码/正文。
+2. **新章**：新建 `CUDA专栏大纲/B-0N_<topic>.md` 或 `C-0N_<topic>.md` → 本表加一行 → 用户确认后再写代码/正文。
 3. **每章三件套**：文章 + 可运行代码 + 可复现指标（需要实测的章）。
-4. **已落地章**：大纲分册可保留供对照；以正文与 `docs/results/` 为准。
+4. **已落地章**：以正文与 `docs/results/` 为准；样板大纲保留 B-07～B-09，其余可归档到 `CUDA专栏大纲/archive/`。
 5. **规划 vs 已实现**必须显式标记（✅ / 🟡 / ⏳）。

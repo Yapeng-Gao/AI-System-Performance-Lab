@@ -18,6 +18,7 @@
 | **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
 | **B-08** | `08_tma_intro.cu` | Hopper+ TMA bulk / tensor-map（**sm_90+**） | `docs/results/B-08_*`；`python scripts/plot_b08_tma.py` |
 | **B-09** | `09_layout_transform.cu` | AoS/SoA + tiled transpose（**不限 sm_90+**） | `docs/results/B-09_*`；`python scripts/plot_b09_layout.py` |
+| **B-10** | —（无新 `.cu`） | Module B Checklist：症状→证据→处方 | `docs/results/B-10_checklist.md`；正文 `article/02_memory_optim/B-10*.md` |
 
 ## 🚀 快速开始
 

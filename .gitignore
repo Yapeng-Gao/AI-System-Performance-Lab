@@ -90,4 +90,9 @@ test-results/
 *.bak
 *.cache
 
-.cursor/
+# Cursor 本地态忽略；技能与规则入库共享
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
+!.cursor/rules/
+!.cursor/rules/**
