@@ -28,3 +28,11 @@
 
 - Module B 收束访存 / 内存体系（含 B-10 Checklist）。
 - Module C 从 **并发原语与控制流/launch** 起笔，不重开 coalescing / TMA 教程。
+
+## 开写前交接（从 Module B）
+
+- **入口钩子**：`article/02_memory_optim/B-10*.md` —— 访存已收束；C 不重开 coalescing / TMA / pinned 教程。
+- **证据导航**：[`../results/B-10_checklist.md`](../results/B-10_checklist.md)（若性能问题其实是访存层，先回 B）。
+- **写稿流程**：`.cursor/skills/aspl-cuda-article/SKILL.md`（与 B-06～B-10 同构：大纲确认 → `.cu` → event median → 正文）。
+- **首章建议**：先写分册 `C-01_warp_primitives.md`（边界 / TL;DR / MVP / 文献池），用户确认后再建 `article/03_compute_primitives/` 与 `examples/03_compute_primitives/`——**禁止先建空目录**。
+- **编号**：总序号 21–30 ↔ C-01～C-10（规划总表落地时逐行补齐）。

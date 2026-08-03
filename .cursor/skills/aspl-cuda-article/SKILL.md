@@ -4,14 +4,14 @@ description: >-
   Writes AI-System-Performance-Lab CUDA column articles end-to-end (outline with
   required literature research, micro-bench, measured results, markdown, figures)
   or partial edits (cover-only, results-only, NCU/SASS paste, TL;DR, 收口评估).
-  Use when starting a chapter (B-10, Module C…), 大纲优化, 写文章, 专栏稿, 调研文献,
+  Use when starting a chapter (C-01, Module C/D…, B-xx polish), 大纲优化, 写文章, 专栏稿, 调研文献,
   补实测, 补NCU, 评估章节, or following the B-06～B-09 workflow — not for unrelated
   product brainstorming.
 ---
 
 # ASPL CUDA 专栏写稿
 
-面向本仓库的**工程索引型** CUDA 文章。默认对齐 **B-06～B-09** 已落地范式（B-09 起含 useful-payload / sectors 口径）。
+面向本仓库的**工程索引型** CUDA 文章。默认对齐 **B-06～B-10** 已落地范式（B-09 起含 useful-payload / sectors；B-10 为 Checklist 无新 `.cu` 特例）。Module C 起沿用同一证据链，主题换并发原语。
 
 配套： [article-template.md](article-template.md) · [literature.md](literature.md) · 项目规则 `.cursor/rules/aspl-cuda-column.mdc`
 
@@ -48,13 +48,14 @@ description: >-
 |---|---|---|
 | A-xx | `article/01_cuda_basic/` | `examples/01_cuda_basics/` |
 | B-xx | `article/02_memory_optim/` | `examples/02_memory_optim/` |
-| 更后 Module | 以 `docs/CUDA专栏规划.md` + `docs/CUDA专栏大纲/` / `docs/仓库架构与现状.md` 为准 | 同左 |
+| C-xx | `article/03_compute_primitives/`（落地时建） | `examples/03_compute_primitives/`（落地时建；**勿先建空 README**） |
+| 更后 Module | 以 `docs/CUDA专栏规划.md` + `docs/CUDA专栏大纲/` 为准 | 同左 |
 
-封面：`article/<module>/assets/B-0N-<topic>-cover.png`；原理图：`B-0N-<topic>.png`。
+封面：`article/<module>/assets/<章号>-<topic>-cover.png`；原理图：同目录 `assets/`。
 
 ## 硬约束（来自本系列实战）
 
-1. **新章先大纲后实现**：`docs/CUDA专栏大纲/B-0N_<topic>.md` 写满边界 / TL;DR×5 / 结构 / MVP / 文献池；`docs/CUDA专栏规划.md` 总表加链接；**用户确认后再写代码与正文**。局部任务跳过。
+1. **新章先大纲后实现**：`docs/CUDA专栏大纲/B-0N_<topic>.md` 或 `C-0N_<topic>.md` 写满边界 / TL;DR×5 / 结构 / MVP / 文献池；`docs/CUDA专栏规划.md` 总表加链接；**用户确认后再写代码与正文**。局部任务跳过。
 2. **能做就做，做不了就标不做**：MVP 按硬件/API 可行性裁决；不做的写进大纲并说明原因。
 3. **默认不写 shell 包装**：主证据一条 binary（如 `--mode sweep`）。**仅当**用户明确要批量 NCU/NSYS/SASS，或多步不可避免时，才加 `0N_profile_*.sh` / `0N_dump_sass.sh`（对齐 B-07/B-08/B-09）。
 4. **主证据 = 裸跑 CUDA event median**；NCU/NSYS/SASS 为旁证。**禁止**把 `ncu` 附着时程序自打印的 ms/GB/s 当结论（会被 replay 放大）。
@@ -181,7 +182,7 @@ description: >-
 
 新章：
 
-> 按 aspl-cuda-article skill 开始 B-10：先读规划与 B-09 钩子，出大纲+文献，确认后再实现。
+> 按 aspl-cuda-article skill 开始 C-01：先读规划、Module-C.md 与 B-10 钩子，出 C-01 大纲+文献，确认后再实现（目录随首章落地再建，勿空壳）。
 
 局部（贴数）：
 
