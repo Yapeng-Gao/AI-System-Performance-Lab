@@ -88,11 +88,11 @@
 | 13 / B-03 | 寄存器压力与 Spilling / Occupancy | ✅ | `B-03*.md` / `03_register_spill.cu` | — |
 | 14 / B-04 | L2 Cache 行为与 Residency | ✅ | `B-04*.md` / `04_l2_residency.cu` | — |
 | 15 / B-05 | Unified Memory：Fault / Prefetch / Advise | ✅ | `B-05*.md` / `05_unified_memory_pf.cu` + results/plot | — |
-| 16 / B-06 | Pinned Memory 与 DMA / Overlap | ✅ | `B-06*.md` / `06_pinned_dma.cu` + results/plot | [大纲](CUDA专栏大纲/B-06_pinned_dma.md) |
+| 16 / B-06 | Pinned Memory 与 DMA / Overlap | ✅ | `B-06*.md` / `06_pinned_dma.cu` + results/plot | [归档](CUDA专栏大纲/archive/B-06_pinned_dma.md) |
 | 17 / B-07 | Async Copy / Pipeline（GMEM→SMEM） | ✅ | `B-07*.md` / `07_cp_async_pipeline.cu` + results/plot | [大纲](CUDA专栏大纲/B-07_cp_async.md) |
 | 18 / B-08 | Hopper TMA：Bulk Copy 与吞吐墙 | ✅ | `B-08*.md` / `08_tma_intro.cu` + results/plot | [大纲](CUDA专栏大纲/B-08_tma.md) |
 | 19 / B-09 | 数据布局（AoS / SoA / Transpose） | ✅ | `B-09*.md` / `09_layout_transform.cu` + results/plot | [大纲](CUDA专栏大纲/B-09_layout.md) |
-| 20 / B-10 | Module B Checklist（症状→证据→处方） | ✅ | `B-10*.md` + results 索引（无新 `.cu`） | [大纲](CUDA专栏大纲/B-10_checklist.md) |
+| 20 / B-10 | Module B Checklist（症状→证据→处方） | ✅ | `B-10*.md` + results 索引（无新 `.cu`） | [归档](CUDA专栏大纲/archive/B-10_checklist.md) |
 
 路径前缀：文章 `article/02_memory_optim/`，示例 `examples/02_memory_optim/`。
 
@@ -111,7 +111,7 @@
 
 ## 5. 每篇文章的固定结构（模板）
 
-新章大纲必须覆盖下列块（完整示例见 B-07/B-08/B-09 分册）：
+新章大纲必须覆盖下列块（完整示例见 B-07/B-08/B-09 样板分册；B-06/B-10 大纲已进 `CUDA专栏大纲/archive/`）：
 
 1. **要解决的问题**：一句话定义瓶颈与场景边界
 2. **结论先行**：3–5 条工程可执行结论（What to do / What not to do）
@@ -157,5 +157,5 @@
 1. **导航本文件只写真实路径与状态**；长大纲进 `CUDA专栏大纲/`。
 2. **新章**：新建 `CUDA专栏大纲/B-0N_<topic>.md` 或 `C-0N_<topic>.md` → 本表加一行 → 用户确认后再写代码/正文。
 3. **每章三件套**：文章 + 可运行代码 + 可复现指标（需要实测的章）。
-4. **已落地章**：大纲分册可保留供对照；以正文与 `docs/results/` 为准。
+4. **已落地章**：以正文与 `docs/results/` 为准；样板大纲保留 B-07～B-09，其余可归档到 `CUDA专栏大纲/archive/`。
 5. **规划 vs 已实现**必须显式标记（✅ / 🟡 / ⏳）。
