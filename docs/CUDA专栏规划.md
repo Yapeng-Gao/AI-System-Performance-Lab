@@ -137,7 +137,7 @@
 
 | 篇章 | 主题 | 状态 | 大纲 |
 |---|---|---|---|
-| 21 / C-01 | Warp primitives（ballot / shfl / warp reduce） | 🟡 正文+示例；待实测 | [C-01_warp_primitives.md](CUDA专栏大纲/C-01_warp_primitives.md) |
+| 21 / C-01 | Warp primitives（ballot / shfl / warp reduce） | 🟡 正文+示例+5090 实测+NCU；可收口 | [C-01_warp_primitives.md](CUDA专栏大纲/C-01_warp_primitives.md) |
 | 22 / C-02 | Cooperative Groups（tile / coalesced；Cluster 可选） | ⏳ | 见 [Module-C.md](CUDA专栏大纲/Module-C.md) |
 | 23 / C-03 | Atomics 与 contention | ⏳ | 同上 |
 | 24 / C-04 | 同步分层（warp / block / grid） | ⏳ | 同上 |

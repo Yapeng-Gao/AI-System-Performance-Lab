@@ -8,7 +8,7 @@
 | [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板**（对照审稿） |
 | [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板**（含 RTX 5090 实测） |
 | [Module-C.md](Module-C.md) | ⏳ | 并发原语总表（C-01～C-10 骨架已收紧） |
-| [C-01_warp_primitives.md](C-01_warp_primitives.md) | 🟡 | 正文+示例已落；待本机 sweep 填数 |
+| [C-01_warp_primitives.md](C-01_warp_primitives.md) | 🟡 | 正文+示例+5090 实测；NCU 可选 |
 | [Module-D.md](Module-D.md) | ⏳ | 算子实现（远期） |
 | [Module-E.md](Module-E.md) | ⏳ | DL 工程集成（远期） |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |

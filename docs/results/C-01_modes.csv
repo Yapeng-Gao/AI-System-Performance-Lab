@@ -1,0 +1,6 @@
+tag,nwarps,block,median_ms,note
+smem,8,256,0.0232,float
+shfl,8,256,0.0220,float; vs smem 1.054x
+shfl_i,8,256,0.0225,int
+redux,8,256,0.0213,int; vs shfl_i 1.055x
+ballot,8,256,0.0252,odd_count=8388608 verify OK

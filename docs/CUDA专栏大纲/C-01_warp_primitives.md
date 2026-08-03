@@ -1,10 +1,11 @@
 # C-01 写作大纲：Warp Primitives（ballot / shfl / warp reduce·scan）
 
-> 状态：🟡 大纲已确认；示例 + 正文骨架已落；**实测数字待本机 sweep**。
+> 状态：🟡 正文+示例+RTX 5090 实测已落；NCU/SASS 可选。
 >
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · 模块：[`Module-C.md`](Module-C.md)
 >
-> **已交付**：`examples/03_compute_primitives/01_warp_primitives.cu`；正文 `article/03_compute_primitives/C-01*.md` + 封面/原理图；结果占位 `docs/results/C-01_warp_primitives.md`。
+> **已交付**：`01_warp_primitives.cu`；正文；`docs/results/C-01_*`；`scripts/plot_c01_warp_primitives.py`。  
+> **本机要点**：nwarps≤4 ≈1.00×；16→**1.15×**；32→**1.27×**；redux/shfl_i≈**1.06×**；NCU@32：shfl `inst`≈**0.58×** smem、shared wf≈**0.22×**。
 
 > **路线**：Microbench-first——**主 sweep 只扫 `nwarps`（block 内 warp 数）**，主曲线 = `shfl/smem` 加速比；`redux` / `ballot` 各做定点表，**不进主 sweep**；scan **首版砍掉**（正文一小节口述即可）。
 >
