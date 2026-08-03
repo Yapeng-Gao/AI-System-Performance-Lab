@@ -6,15 +6,15 @@
 ![License](https://img.shields.io/badge/license-GPL%20v3-blue)
 
 **AI System Performance Lab** 是《AI 系统性能工程》专栏的配套仓库。  
-**当前主线**：CUDA Module A + Module B（B-01～B-10 已落地；下一站 Module C）。  
+**当前主线**：CUDA Module A + B 已收束；**Module C 进行中**（C-01 正文+示例已落，待本机实测）。  
 结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
 
 ## 怎么读
 
 | 你想做的事 | 去哪 |
 |---|---|
-| 读文章 | `article/01_cuda_basic/`、`article/02_memory_optim/` |
-| 跑章节实验 | `examples/01_cuda_basics/`、`examples/02_memory_optim/` |
+| 读文章 | `article/01_cuda_basic/`、`article/02_memory_optim/`、`article/03_compute_primitives/` |
+| 跑章节实验 | `examples/01_cuda_basics/`、`examples/02_memory_optim/`、`examples/03_compute_primitives/` |
 | 看实测与 CSV | `docs/results/` |
 | 重画 B-05～B-09 数据图 | `python scripts/plot_b05_unified_memory.py` 等 |
 | Module B 证据索引（B-10） | [`docs/results/B-10_checklist.md`](docs/results/B-10_checklist.md) |
@@ -26,7 +26,8 @@ AI-System-Performance-Lab/
 ├── article/           # 专栏正文 + assets
 ├── examples/          # 章节 .cu（CMake 唯一构建目标）
 │   ├── 01_cuda_basics/
-│   └── 02_memory_optim/
+│   ├── 02_memory_optim/
+│   └── 03_compute_primitives/
 ├── docs/              # 规划 + results/
 ├── scripts/           # 绘图 / profile 辅助
 ├── cmake/
@@ -90,7 +91,7 @@ cmake --build . --config Release --parallel 8
 ```bash
 ./build/bin/01_cuda_basics_01_hello_modern
 ./build/bin/02_memory_optim_06_pinned_dma --mode pinned --mb 256
-./build/bin/02_memory_optim_07_cp_async_pipeline --mode sweep
+./build/bin/03_compute_primitives_01_warp_primitives --mode sweep
 ```
 
 重画实测图：
@@ -107,7 +108,8 @@ python scripts/plot_b07_cp_async.py
 | :--- | :--- | :--- |
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
 | **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | ✅ B-01～B-10 |
-| **Module C–E** | 仅规划文档 | ⏳ |
+| **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | 🟡 C-01（待实测） |
+| **Module D–E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。
 
