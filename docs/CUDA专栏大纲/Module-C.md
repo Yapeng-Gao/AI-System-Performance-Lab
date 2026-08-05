@@ -1,8 +1,8 @@
 # Module C 大纲：核心编程技巧与并发原语（21–30）
 
-> 状态：🟡 规划中（**C-01 大纲已确认，示例 `.cu` 已落盘；待本机实测**）。`examples/03_compute_primitives/` 已随首章创建；`article/03_*` 待正文再建。
+> 状态：🟡 进行中（**C-01 ✅ · C-02 ✅**；下一章 C-03）。目录已随首章落地。
 >
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · 首章：[`C-01_warp_primitives.md`](C-01_warp_primitives.md)
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md)
 
 ## 模块目标
 
@@ -10,17 +10,17 @@
 
 ## 落地约定
 
-- 每篇对应一个 `examples/03_compute_primitives/<NN>_*.cu`（目录随 C-01 落地再建），主证据 = CUDA event **median**；NCU/NSYS/SASS 按该章大纲裁决。
-- 文章落 `article/03_compute_primitives/`（同步随首章再建）。
+- 每篇对应一个 `examples/03_compute_primitives/<NN>_*.cu`，主证据 = CUDA event **median**；NCU/NSYS/SASS 按该章大纲裁决。
+- 文章落 `article/03_compute_primitives/`。
 - 写稿流程：`.cursor/skills/aspl-cuda-article/SKILL.md`（与 B-06～B-10 同构）。
 
 ## 章节总表（21–30 ↔ C-01～C-10）
 
 | 总序 | 章 | 主题 | 一句话边界 | 状态 |
 |---|---|---|---|---|
-| 21 | **C-01** | Warp primitives（ballot / shfl / warp reduce·scan） | 寄存器级通信与 mask 正确性；**不做** DeviceReduce / Softmax | ⏳ [大纲](C-01_warp_primitives.md) |
-| 22 | C-02 | Cooperative Groups（tile / coalesced） | 安全分组 API；Cluster 标可选支线 | ⏳ |
-| 23 | C-03 | Atomics 与 contention | global vs shared；分层规约 / 聚合；**深挖** warp-aggregated | ⏳ |
+| 21 | **C-01** | Warp primitives（ballot / shfl / warp reduce·scan） | 寄存器级通信与 mask 正确性；**不做** DeviceReduce / Softmax | ✅ [大纲](C-01_warp_primitives.md) |
+| 22 | **C-02** | Cooperative Groups（tile / coalesced） | 安全分组 API；Cluster 标可选支线 | ✅ [大纲](C-02_cooperative_groups.md) |
+| 23 | **C-03** | Atomics 与 contention | global vs shared；分层规约 / 聚合；**深挖** warp-aggregated | ⏳ [大纲](C-03_atomics_contention.md) |
 | 24 | C-04 | 同步分层（warp / block / grid） | `__syncwarp`、block barrier、grid sync；与 C-02 去重 | ⏳ |
 | 25 | C-05 | Kernel fusion 代价边界 | fusion vs 多 kernel：寄存器 / occupancy / 可维护性 | ⏳ |
 | 26 | C-06 | CUDA Graph 与 launch overhead | 先测 launch 墙；生产 capture / PyTorch 留给 Module E | ⏳ |
@@ -53,8 +53,8 @@
 | Module D | Reduce → Softmax/LN → GEMM/TC | C 停在原语与融合边界；算子数值与库级实现归 D |
 | Module E | Python 扩展 / profiler / 部署 | Graph 生产叠法、框架集成归 E |
 
-## 开写前交接（从 Module B）
+## 开写交接
 
-- **入口钩子**：`article/02_memory_optim/B-10*.md` —— 访存已收束。
-- **证据导航**：[`../results/B-10_checklist.md`](../results/B-10_checklist.md)（若问题其实是访存层，先回 B）。
-- **首章**：确认 [`C-01_warp_primitives.md`](C-01_warp_primitives.md) 后再建目录与 `.cu`。
+- **已收束**：C-01 Warp Primitives；C-02 Cooperative Groups（正文 + `docs/results/C-02_*`）。
+- **当前焦点**：确认 [`C-03_atomics_contention.md`](C-03_atomics_contention.md) 后再写 `.cu` / 正文。
+- **访存回退**：问题其实是带宽/布局时，先回 [`../results/B-10_checklist.md`](../results/B-10_checklist.md)。

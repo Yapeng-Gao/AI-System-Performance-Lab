@@ -1,6 +1,6 @@
 ---
-description: ASPL CUDA 专栏硬约束——写稿/补实测/改 examples 时先走 aspl-cuda-article skill
-globs: article/**/*.md,docs/CUDA*/**,docs/results/**,examples/**/*.cu,examples/**/*.sh,scripts/plot_b*.py
+description: ASPL CUDA 专栏硬约束——写稿/补实测/改 examples 时先走 aspl-cuda-article skill；commit 前同步导航文档
+globs: article/**/*.md,docs/CUDA*/**,docs/results/**,docs/仓库架构与现状.md,examples/**/*.cu,examples/**/*.sh,examples/**/README.md,scripts/plot_*.py,README.md
 alwaysApply: false
 ---
 
@@ -16,11 +16,19 @@ alwaysApply: false
 4. **新章**先大纲（`docs/CUDA专栏大纲/` 的 `B-0N_*` / `C-0N_*`）并等用户确认；局部任务（补数/改图/改 TL;DR）不重开全流程。
 5. **§7 扩展阅读**与 **§10 参考文献**去重：§7 ≤4 条出口；完整分层在 §10（若章节编号偏移，以正文参考文献节为准）。
 6. 带宽/布局章：用 **useful payload**；提醒 L2 可能抬高绝对 GB/s，主看加速比形状。
-7. **不擅自 commit/push**；跳过仅换行符噪声的大纲文件。
-8. 不要把 Host CE、设备 `memcpy_async`、TMA bulk 混成一层；不要默认每章都要 sm_90+。
-9. Checklist / 收束章可无新 `.cu`（如 B-10）；Module C 起默认仍要 micro-bench，除非该章大纲裁决不做。
-10. 新 Module 目录随**首章落地**再建；禁止提前建空 `examples/03_*` README。
+7. **不擅自 commit/push**；用户明确要求再提交。Commit 时跳过仅换行符噪声的大纲文件。
+8. **Commit 前同步相关文档**（与本次改动同批进暂存区；禁止只交 `.cu`/正文而导航仍写「待测」）：
+   - `docs/CUDA专栏规划.md`：该章状态 ✅/🟡 + 大纲链接；「当前焦点」指向下一章
+   - 该章大纲：顶部状态、本机要点、交付 checklist
+   - `docs/CUDA专栏大纲/Module-*.md` 与 `docs/CUDA专栏大纲/README.md`：章节表状态
+   - 根 `README.md`：主线一句 + 专栏映射表 + 必要时运行/plot 示例
+   - `examples/<module>/README.md`：新 `.cu` 入口行
+   - `docs/仓库架构与现状.md`：目录树 / 进度表若已过时则改
+   - 有实测：`docs/results/<章>_*` 与正文数字一致
+9. 不要把 Host CE、设备 `memcpy_async`、TMA bulk 混成一层；不要默认每章都要 sm_90+。
+10. Checklist / 收束章可无新 `.cu`（如 B-10）；Module C 起默认仍要 micro-bench，除非该章大纲裁决不做。
+11. 新 Module 目录随**首章落地**再建；禁止提前建空 `examples/03_*` README。
 
 ## 收口一句话
 
-结论有数、边界清晰、主命令一条、旁证已落盘（若做了）→ 能停则停。
+结论有数、边界清晰、主命令一条、旁证已落盘（若做了）、导航文档已同步 → 能停则停；用户要 commit 时把上述文档一并纳入。
