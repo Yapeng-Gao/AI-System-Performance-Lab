@@ -1,8 +1,11 @@
 # C-03 写作大纲：Atomics 与 contention（global / shared / warp-aggregated）
 
-> 状态：⏳ 大纲待确认（确认后再写 `.cu` / 正文）。
+> 状态：✅ 文章+示例+RTX 5090 实测已落地。对照审稿用；以正文与 `docs/results/C-03_*` 为准。
 >
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · 模块：[`Module-C.md`](Module-C.md) · 上章：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md)
+>
+> **已交付**：`03_atomics_contention.cu`；正文；`docs/results/C-03_*`；plot；封面/原理图。  
+> **本机要点**：手写 **agg≈naive（~1.0×）**；**smem/naive @hit=1 → ~6.3×** 且随 hit_rate 抬升；与 Kepler「聚合 global 最优」相反。
 
 > **路线**：Microbench-first——主曲线扫 **争用强度**（同地址命中比例 / bin 数）；对照 **naive global atomic** vs **shared staging** vs **warp-aggregated**（ballot/coalesced 入口承接 C-01/C-02）。
 >
@@ -121,8 +124,8 @@
 
 **交付进度**
 
-- [ ] 用户确认本大纲
-- [ ] `examples/03_compute_primitives/03_atomics_contention.cu`
-- [ ] 正文 + 封面/原理图 + plot
-- [ ] `docs/results/C-03_*`（本机实测后）
-- [ ] 回填规划总表
+- [x] 用户确认本大纲
+- [x] `examples/03_compute_primitives/03_atomics_contention.cu`
+- [x] 本机实测 + `docs/results/C-03_*` + plot
+- [x] 正文 + 封面/原理图（TL;DR 以 smem 主曲线）
+- [x] 回填规划总表 ✅
