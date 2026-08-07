@@ -99,7 +99,7 @@
 ### 4.2 当前焦点
 
 1. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
-2. 下一焦点：**Module C**（见 `docs/CUDA专栏大纲/Module-C.md`）
+2. **下一焦点：Module C / C-03**（[`CUDA专栏大纲/C-03_atomics_contention.md`](CUDA专栏大纲/C-03_atomics_contention.md)；C-01/C-02 ✅）
 
 ### 4.3 工程索引型最低交付（新章）
 
@@ -129,9 +129,26 @@
 
 | 模块 | 一句话 | 大纲 |
 |---|---|---|
-| C | Warp / CG / Atomics / Fusion / Graph | [Module-C.md](CUDA专栏大纲/Module-C.md) |
+| C | Warp / CG / Atomics / Sync / Fusion / Graph / … / Checklist | [Module-C.md](CUDA专栏大纲/Module-C.md) |
 | D | Reduce → Softmax/LN → GEMM/Tensor Core | [Module-D.md](CUDA专栏大纲/Module-D.md) |
 | E | Python 扩展 → profiler → 部署；目录未建 | [Module-E.md](CUDA专栏大纲/Module-E.md) |
+
+### 6.1 Module C 章节索引（21–30）
+
+| 篇章 | 主题 | 状态 | 大纲 |
+|---|---|---|---|
+| 21 / C-01 | Warp primitives（ballot / shfl / warp reduce） | ✅ | [C-01_warp_primitives.md](CUDA专栏大纲/C-01_warp_primitives.md) |
+| 22 / C-02 | Cooperative Groups（tile / coalesced；Cluster 可选） | ✅ | [C-02_cooperative_groups.md](CUDA专栏大纲/C-02_cooperative_groups.md) |
+| 23 / C-03 | Atomics 与 contention | ⏳ 大纲待确认 | [C-03_atomics_contention.md](CUDA专栏大纲/C-03_atomics_contention.md) |
+| 24 / C-04 | 同步分层（warp / block / grid） | ⏳ | 同上 |
+| 25 / C-05 | Kernel fusion 代价边界 | ⏳ | 同上 |
+| 26 / C-06 | CUDA Graph 与 launch overhead | ⏳ | 同上 |
+| 27 / C-07 | Persistent **或** Warp specialization（候选） | ⏳ 候选 | 同上 |
+| 28 / C-08 | 多 kernel 重叠（候选，可并入 C-06） | ⏳ 候选 | 同上 |
+| 29 / C-09 | 预留（divergence 处方 / named barrier 等） | ⏳ 候选 | 同上 |
+| 30 / C-10 | Module C Checklist | ⏳ | 同上 |
+
+路径前缀（落地时建）：文章 `article/03_compute_primitives/`，示例 `examples/03_compute_primitives/`。
 
 ---
 

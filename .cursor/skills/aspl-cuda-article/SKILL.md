@@ -13,7 +13,7 @@ description: >-
 
 面向本仓库的**工程索引型** CUDA 文章。默认对齐 **B-06～B-10** 已落地范式（B-09 起含 useful-payload / sectors；B-10 为 Checklist 无新 `.cu` 特例）。Module C 起沿用同一证据链，主题换并发原语。
 
-配套： [article-template.md](article-template.md) · [literature.md](literature.md) · 项目规则 `.cursor/rules/aspl-cuda-column.mdc`
+配套： [article-template.md](article-template.md) · [literature.md](literature.md) · 文风 [../aspl-article-voice/SKILL.md](../aspl-article-voice/SKILL.md) · 项目规则 `.cursor/rules/aspl-cuda-column.mdc`
 
 ## 何时启用
 
@@ -61,7 +61,8 @@ description: >-
 4. **主证据 = 裸跑 CUDA event median**；NCU/NSYS/SASS 为旁证。**禁止**把 `ncu` 附着时程序自打印的 ms/GB/s 当结论（会被 replay 放大）。
 5. **硬件门槛以该章大纲为准**（sm_80+ / sm_90+ / 不限）。写作机可能无目标 GPU；给**可粘贴命令**，用户一贴输出就落盘——不要干等或只口头解读。
 6. **不擅自 commit / push**；用户明确要求再提交。Commit 时跳过「仅换行符」噪声文件（常见于 `docs/CUDA专栏大纲/`）。
-7. **§7 扩展阅读 ≠ §10 参考文献抄两遍**：§7 只留 2～4 条「不抢后续 Module」+ 可选下一章钩子；完整分层目录在 §10；§7 条目用「见 §10-x」去重（见 [article-template.md](article-template.md)）。
+7. **Commit 前必须同步相关文档**（与代码/正文同批暂存；禁止导航仍写「待测」而产物已齐）。清单见下方 §5.1。
+8. **§7 扩展阅读 ≠ §10 参考文献抄两遍**：§7 只留 2～4 条「不抢后续 Module」+ 可选下一章钩子；完整分层目录在 §10；§7 条目用「见 §10-x」去重（见 [article-template.md](article-template.md)）。
 
 ## 工作流（新章全流程 0→6）
 
@@ -135,17 +136,30 @@ description: >-
 - 封面 + 承接上章引用块；**TL;DR 带本机数字**
 - 原理：短 ASCII 或 1～2 张原理图；图注中文
 - 决策表 / SOP / 误区 / 钩子
-- §7 与 §10 **去重**（硬约束 7）
+- §7 与 §10 **去重**（硬约束 8）
 - 实测：表 + 图；口径写明 median；有 NCU 则 §5.x 旁证小节
+- **文风 pass**：散文段走 `.cursor/skills/aspl-article-voice/SKILL.md`（去套话；**不许**拆表/TL;DR/命令）
 
 封面风格：深色底、青/琥珀；忌紫光堆徽章。设备内拷贝图例标 **GMEM→SMEM**（勿写成 Host CE / H2D）。
 
 ### 5. 仓库状态回填
 
-- `docs/CUDA专栏规划.md`：状态 ✅/🟡 + 大纲链接
-- 该章大纲顶部状态与交付说明
-- 根 `README.md`、`examples/<module>/README.md`
-- `docs/仓库架构与现状.md`（若有章节表）
+章落地或用户要求 commit 前，按 §5.1 核完再 `git add`。
+
+### 5.1 Commit 前文档同步清单
+
+| 文件 | 更新什么 |
+|---|---|
+| `docs/CUDA专栏规划.md` | 该章状态 ✅/🟡 + 大纲链接；§4.2「当前焦点」指下一章 |
+| `docs/CUDA专栏大纲/<章>.md` | 顶部状态、本机要点、交付 checklist 勾选 |
+| `docs/CUDA专栏大纲/Module-*.md` | 章节总表该行状态 |
+| `docs/CUDA专栏大纲/README.md` | 分册表状态行 |
+| 根 `README.md` | 主线一句、专栏映射、运行/plot 示例（若有新 binary） |
+| `examples/<module>/README.md` | 新 `.cu` / 主命令 / results 路径 |
+| `docs/仓库架构与现状.md` | 目录树、进度表、焦点句（过时则改） |
+| `docs/results/<章>_*` | 与正文 TL;DR/实测表数字一致（有测才交） |
+
+只改图注/错字等局部任务：可只更新直接相关文件，但**不得**让规划总表与真实进度矛盾。
 
 ### 6. 收口
 
@@ -158,6 +172,7 @@ description: >-
 | 口径 | 未把 ncu 附着 ms 当结论；带宽章有 L2/useful 提醒 |
 | §7§10 | 无大段重复链接 |
 | 旁证（若做了） | 已落 `docs/results/` + 正文小节 |
+| 导航同步 | §5.1 清单与产物进度一致（用户要 commit 时一并纳入） |
 
 **能停则停**。P1（NCU/SASS/图注）不阻塞发布，除非用户要求补。
 
@@ -176,7 +191,9 @@ description: >-
 - 用 ncu 附着时墙钟 ms 写进 TL;DR
 - 宣称「换 TMA/SoA 就少指令」却无 `inst_executed` / sectors 证据
 - §7 与 §10 整页重复
+- **只 commit 正文/`.cu`，规划/README/Module 表仍写「待测」**
 - 过度美化拖延下一章；被 brainstorming 带去写无关 product spec
+- 为去 AI 味拆掉决策表 / TL;DR；或灌「说真的」「太离谱了」公众号腔
 
 ## 快速启动话术
 

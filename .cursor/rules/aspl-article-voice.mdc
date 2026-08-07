@@ -1,0 +1,15 @@
+---
+description: ASPL 专栏正文文风——去 AI 套话，保留决策表/TL;DR/实测表；写 article 时叠用 aspl-article-voice
+globs: article/**/*.md
+alwaysApply: false
+---
+
+# ASPL 专栏文风（薄约束）
+
+写/改 `article/**/*.md` 时：
+
+1. 先遵守 `.cursor/rules/aspl-cuda-column.mdc`（证据与流程）。
+2. 再读并执行 `.cursor/skills/aspl-article-voice/SKILL.md`（散文去 AI 味）。
+3. **禁止**为去 AI 味删除决策表、TL;DR、mode/实测表、命令块、§10 参考文献。
+4. **禁止**公众号口语灌鸡汤；要干脆的工程书面语。
+5. 散文自检五维总分 &lt;35 → 先改叙述再交付。
