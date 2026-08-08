@@ -99,7 +99,7 @@
 ### 4.2 当前焦点
 
 1. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
-2. **下一焦点：Module C / C-03**（[`CUDA专栏大纲/C-03_atomics_contention.md`](CUDA专栏大纲/C-03_atomics_contention.md)；C-01/C-02 ✅）
+2. **下一焦点：Module C / C-04**（[`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)；C-01～C-03 ✅）
 
 ### 4.3 工程索引型最低交付（新章）
 
@@ -139,7 +139,7 @@
 |---|---|---|---|
 | 21 / C-01 | Warp primitives（ballot / shfl / warp reduce） | ✅ | [C-01_warp_primitives.md](CUDA专栏大纲/C-01_warp_primitives.md) |
 | 22 / C-02 | Cooperative Groups（tile / coalesced；Cluster 可选） | ✅ | [C-02_cooperative_groups.md](CUDA专栏大纲/C-02_cooperative_groups.md) |
-| 23 / C-03 | Atomics 与 contention | ⏳ 大纲待确认 | [C-03_atomics_contention.md](CUDA专栏大纲/C-03_atomics_contention.md) |
+| 23 / C-03 | Atomics 与 contention | ✅ | [C-03_atomics_contention.md](CUDA专栏大纲/C-03_atomics_contention.md) |
 | 24 / C-04 | 同步分层（warp / block / grid） | ⏳ | 同上 |
 | 25 / C-05 | Kernel fusion 代价边界 | ⏳ | 同上 |
 | 26 / C-06 | CUDA Graph 与 launch overhead | ⏳ | 同上 |

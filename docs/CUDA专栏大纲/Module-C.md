@@ -1,8 +1,8 @@
 # Module C 大纲：核心编程技巧与并发原语（21–30）
 
-> 状态：🟡 进行中（**C-01 ✅ · C-02 ✅**；下一章 C-03）。目录已随首章落地。
+> 状态：🟡 进行中（**C-01～C-03 ✅**；下一章 C-04）。目录已随首章落地。
 >
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md)
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md)
 
 ## 模块目标
 
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | 21 | **C-01** | Warp primitives（ballot / shfl / warp reduce·scan） | 寄存器级通信与 mask 正确性；**不做** DeviceReduce / Softmax | ✅ [大纲](C-01_warp_primitives.md) |
 | 22 | **C-02** | Cooperative Groups（tile / coalesced） | 安全分组 API；Cluster 标可选支线 | ✅ [大纲](C-02_cooperative_groups.md) |
-| 23 | **C-03** | Atomics 与 contention | global vs shared；分层规约 / 聚合；**深挖** warp-aggregated | ⏳ [大纲](C-03_atomics_contention.md) |
+| 23 | **C-03** | Atomics 与 contention | global vs shared；分层规约 / 聚合；**深挖** warp-aggregated | ✅ [大纲](C-03_atomics_contention.md) |
 | 24 | C-04 | 同步分层（warp / block / grid） | `__syncwarp`、block barrier、grid sync；与 C-02 去重 | ⏳ |
 | 25 | C-05 | Kernel fusion 代价边界 | fusion vs 多 kernel：寄存器 / occupancy / 可维护性 | ⏳ |
 | 26 | C-06 | CUDA Graph 与 launch overhead | 先测 launch 墙；生产 capture / PyTorch 留给 Module E | ⏳ |
@@ -55,6 +55,6 @@
 
 ## 开写交接
 
-- **已收束**：C-01 Warp Primitives；C-02 Cooperative Groups（正文 + `docs/results/C-02_*`）。
-- **当前焦点**：确认 [`C-03_atomics_contention.md`](C-03_atomics_contention.md) 后再写 `.cu` / 正文。
+- **已收束**：C-01～C-03（正文 + `docs/results/C-0N_*`）。
+- **当前焦点**：拆 C-04 同步分层大纲后再写 `.cu` / 正文。
 - **访存回退**：问题其实是带宽/布局时，先回 [`../results/B-10_checklist.md`](../results/B-10_checklist.md)。
