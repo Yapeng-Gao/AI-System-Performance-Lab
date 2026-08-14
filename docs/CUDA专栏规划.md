@@ -15,6 +15,7 @@
 | [`仓库架构与现状.md`](仓库架构与现状.md) | 目录树、已删占位、插图约定 |
 | `docs/results/` | 实测摘要与 CSV |
 | `article/` / `examples/` | 正文与可运行示例 |
+| [专栏导读](../article/01_cuda_basic/00.%20专栏导读：怎么读、怎么跑、本机数字从哪来.md) | 外发入口：怎么读 / 怎么跑 / 已交付 vs 规划 |
 
 ---
 
@@ -48,7 +49,7 @@
 |---|---|---|---|
 | **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | ✅ | 见下表（无独立长大纲分册） |
 | **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | ✅ B-01～B-10 | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
-| **C** 核心编程技巧与并发原语 | 21–30 | ⏳ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
+| **C** 核心编程技巧与并发原语 | 21–30 | 🟡 C-01～C-06 ✅ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
 | **D** 计算原语与高级算子 | 31–40 | ⏳ | [`CUDA专栏大纲/Module-D.md`](CUDA专栏大纲/Module-D.md) |
 | **E** DL 工程实战与系统集成 | 41–50 | ⏳ | [`CUDA专栏大纲/Module-E.md`](CUDA专栏大纲/Module-E.md) |
 
@@ -60,6 +61,7 @@
 
 | 篇章 | 主题 | 文章 | 示例 |
 |---|---|---|---|
+| 0 / 导读 | 怎么读、怎么跑、本机数字 | `article/01_cuda_basic/00. 专栏导读*` ✅ | — |
 | 1 / A-01 | CUDA 核心概念总览与演进 | `article/01_cuda_basic/A-01*.md` ✅ | `examples/01_cuda_basics/01_hello_modern.cu` ✅ |
 | 2 / A-02 | GPU 硬件架构深度解析 | `article/01_cuda_basic/A-02*.md` ✅ | `examples/01_cuda_basics/02_hardware_query.cu` ✅ |
 | 3 / A-03 | 编程模型物理映射（GTE/SM/Warp） | `article/01_cuda_basic/A-03*.md` ✅ | `examples/01_cuda_basics/03_grid_mapping.cu` ✅ |

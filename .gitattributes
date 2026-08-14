@@ -1,3 +1,7 @@
 # Shell scripts must stay LF for Linux/server bash (CRLF breaks `set -o pipefail`).
 *.sh text eol=lf
 *.bash text eol=lf
+
+# GitHub linguist：示例主语言是 CUDA，不要被 plot 脚本显示成 Python。
+*.cu linguist-language=Cuda
+*.cuh linguist-language=Cuda

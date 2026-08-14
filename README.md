@@ -5,19 +5,21 @@
 [![GitHub stars](https://img.shields.io/github/stars/Yapeng-Gao/AI-System-Performance-Lab?style=social)](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)
 
 **CUDA 性能工程：专栏正文 + 可跑微基准 + RTX 5090 实测表。**  
-不是教程摘抄——每章给决策表、一条主命令、本机 median 数字。
+不是教程摘抄——每章给决策表、一条主命令、本机 median 数字。  
+仓库现在没有 Triton / FlashAttention / vLLM；那些在 Module D/E 规划里。
 
-有用请 **[Star](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)**，方便后续章更新检索。
+先读 [专栏导读](article/01_cuda_basic/00.%20专栏导读：怎么读、怎么跑、本机数字从哪来.md)。有用请 **[Star](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)**，方便后续章更新检索。
 
 ### 本机结论速览（RTX 5090 / `sm_120`）
 
 | 章 | 一句话 |
 |---|---|
-| C-05 Fusion | 瘦融合随链长 **3.9×→9.8×**；`fat` occupancy 6→1，相对瘦融合慢 **8×** |
+| B-09 布局 | `touch_fields=1` 时 SoA / AoS ≈ **13.6×** |
 | C-06 Graph | 短核链 `stream/graph` ≈ **3.7～4.1×**；`work=4096` → **1.01×** |
+| C-05 Fusion | 瘦融合随链长 **3.9×→9.8×**；`fat` occupancy 6→1，相对瘦融合慢 **8×** |
 | C-04 Sync | `grid/block` ≈ **17×**；`phases`≈1（少 sync ≠ 自动更快） |
 
-全文在 `article/`；复现命令在下方。知乎 / CSDN 转载请保留本仓库链接。
+全文在 `article/`；复现命令在下方。知乎 / CSDN / 掘金转载请保留本仓库链接。
 
 ---
 
@@ -25,6 +27,7 @@
 
 | 你想做的事 | 去哪 |
 |---|---|
+| 从哪读起 | [专栏导读](article/01_cuda_basic/00.%20专栏导读：怎么读、怎么跑、本机数字从哪来.md) |
 | 读文章 | `article/01_cuda_basic/`、`article/02_memory_optim/`、`article/03_compute_primitives/` |
 | 跑章节实验 | `examples/01_cuda_basics/`、`examples/02_memory_optim/`、`examples/03_compute_primitives/` |
 | 看实测与 CSV | `docs/results/` |
@@ -46,7 +49,7 @@ AI-System-Performance-Lab/
 └── CMakeLists.txt
 ```
 
-**当前主线**：Module A + B 已收束；Module C：C-01～C-06 ✅。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
+**当前主线**：导读已收进仓库；Module A + B 已收束；Module C：C-01～C-06 ✅。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
 
 ## 快速开始 (Windows/Linux)
 
@@ -134,9 +137,10 @@ python scripts/plot_c06_cuda_graph.py
 
 | 模块 | 路径 | 状态 |
 | :--- | :--- | :--- |
+| **导读** | `article/01_cuda_basic/00. 专栏导读*` | ✅ |
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
 | **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | ✅ B-01～B-10 |
-| **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | 🟡 C-01～C-06 ✅ |
+| **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | 🟡 C-01～C-06 ✅；C-07～C-10 规划 |
 | **Module D–E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。
