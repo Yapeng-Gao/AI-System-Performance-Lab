@@ -28,7 +28,9 @@ alwaysApply: false
 9. 不要把 Host CE、设备 `memcpy_async`、TMA bulk 混成一层；不要默认每章都要 sm_90+。
 10. Checklist / 收束章可无新 `.cu`（如 B-10）；Module C 起默认仍要 micro-bench，除非该章大纲裁决不做。
 11. 新 Module 目录随**首章落地**再建；禁止提前建空 `examples/03_*` README。
+12. **文首和文末**都要 GitHub `https` 绝对链：仓库 + Star；有 `.cu` 则 blob；下一篇用 `tree/main/article/<module>/`（目录，禁止 `./A-xx.md`）。句式见 `.cursor/skills/aspl-cuda-article/article-template.md`。
+13. 用户说「优化」= 改正文（事实、CTA、外链、文风）。**默认不压 PNG**；未要求不把体积当任务。图禁 `csdnimg`，用本地 `assets/`。
 
 ## 收口一句话
 
-结论有数、边界清晰、主命令一条、旁证已落盘（若做了）、导航文档已同步 → 能停则停；用户要 commit 时把上述文档一并纳入。
+结论有数、边界清晰、主命令一条、文首文末绝对链齐、旁证已落盘（若做了）、导航文档已同步 → 能停则停；用户要 commit 时把上述文档一并纳入。PNG 体积不挡发布。

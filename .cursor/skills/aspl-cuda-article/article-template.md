@@ -11,13 +11,13 @@
 ## 推荐目录
 
 ```markdown
+# B-0N. <工程索引型标题>
+
 ![封面](assets/B-0N-...-cover.png)
 
 > 上章结论一句话 → 本章卡点一句话 → 本章交付一句话。
 
-**配套可复现**：[Yapeng-Gao/AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)（文章 + `.cu` + 实测表）。有用请 Star。 本章示例：[`examples/<module>/0N_<topic>.cu`](https://github.com/Yapeng-Gao/AI-System-Performance-Lab/blob/main/examples/<module>/0N_<topic>.cu)。
-
-## B-0N. <标题>
+**配套可复现**：[Yapeng-Gao/AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)（文章 + `.cu` + 实测表）。有用请 Star。本章示例：[`examples/<module>/0N_<topic>.cu`](https://github.com/Yapeng-Gao/AI-System-Performance-Lab/blob/main/examples/<module>/0N_<topic>.cu)。
 
 ## TL;DR（工程结论）
 1～5 条；有实测后写入本机数字与判停条件。
@@ -53,20 +53,33 @@
 可执行步骤 + 判停 + 高频坑。
 
 ## 9. 小结与下一章
-三句话收敛 + 钩子。
+三句话收敛 + 钩子（下一篇用 GitHub **目录**绝对链，见下方出链规则）。
 
-文末固定（转载到 CSDN/知乎时保留绝对链接）：
-
-```markdown
 ---
 
-> 本文配套代码与实测：[AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)。觉得有用请 Star，后续章更新更好找。
-```
+> 本文配套代码与实测：[AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)。觉得有用请 Star，后续章更新更好找。  
+> 本章示例：[`examples/<module>/0N_<topic>.cu`](https://github.com/Yapeng-Gao/AI-System-Performance-Lab/blob/main/examples/<module>/0N_<topic>.cu)。下一篇：[X-0N 短标题](https://github.com/Yapeng-Gao/AI-System-Performance-Lab/tree/main/article/<module>/)。
 
 ## 10. 参考文献
 官方 / 工程 / 实证 / 前沿 分层编号；与大纲文献池对齐。
 支撑 TL;DR/决策表的条目必须出现在此节。
 ```
+
+## 文首 / 文末出链（CSDN 同步硬规则）
+
+站外相对路径必裂。**文首和文末都要有 GitHub `https` 绝对链**，不要只写 Star 口号。
+
+| 位置 | 必有 | 有 `.cu` 时 | 下一篇 |
+|---|---|---|---|
+| 文首「配套可复现」 | 仓库根 + Star | `blob/main/examples/.../*.cu` | 导读/无示例章：改写「下一篇」目录链 |
+| 文末（§9 后、§10 前） | 仓库根 + Star | 同上 `.cu` | `tree/main/article/<module>/`（**目录**，不要 `./A-02.md`，不要中文文件名 blob） |
+
+无 `.cu` 的章（导读、Checklist）：两处都用「下一篇」目录链代替「本章示例」。转载时这两段绝对链不许删。
+
+## 优化什么、不优化什么
+
+用户说「优化 / 收口 / 能发吗」= **改正文**：事实、边界、CTA、外链、文风。  
+**默认不压 PNG、不把体积当 P1。** 图只在事实画错、裂图（`csdnimg`）、或用户明确说重画/修图时才动 `assets/` 像素。
 
 ## §7 vs §10（去重硬规则）
 

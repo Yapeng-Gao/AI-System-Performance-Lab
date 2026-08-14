@@ -35,9 +35,10 @@ description: >-
 | 用户意图 | 走哪条 |
 |---|---|
 | 开始新章 / 大纲优化 / 从 0 落地 | **全流程**（下方 0→6） |
-| 只优化封面/原理图 | 只改 `article/.../assets/` + 正文引用；不重开大纲 |
 | 只贴了实测 / NCU / SASS | **立刻**落 `docs/results/` + 改正文旁证/TL;DR + 必要时 plot；不重写机制章 |
 | 只改 TL;DR / SOP / 误区 / §7§10 去重 | 局部改正文；必要时回写规划 |
+| 用户说优化 / 收口 / 能发吗 | **改正文**（事实、CTA、外链、文风）；**默认不压 PNG** |
+| 用户明确说重画 / 修图 / 封面 | 只改 `assets/` + 图注；不把体积当任务 |
 | 只修 `.cu` / profile 脚本 bug | 改代码/脚本；若影响口径再改结果节 |
 | 只要评估能否发布 | 走 §6 收口清单；能停则停，列出 P0/P1 |
 
@@ -64,6 +65,8 @@ description: >-
 6. **不擅自 commit / push**；用户明确要求再提交。Commit 时跳过「仅换行符」噪声文件（常见于 `docs/CUDA专栏大纲/`）。
 7. **Commit 前必须同步相关文档**（与代码/正文同批暂存；禁止导航仍写「待测」而产物已齐）。清单见下方 §5.1。
 8. **§7 扩展阅读 ≠ §10 参考文献抄两遍**：§7 只留 2～4 条「不抢后续 Module」+ 可选下一章钩子；完整分层目录在 §10；§7 条目用「见 §10-x」去重（见 [article-template.md](article-template.md)）。
+9. **文首和文末都要 GitHub `https` 绝对链**（仓库 + Star；有 `.cu` 则 blob；下一篇用 `tree/main/article/<module>/` 目录链）。禁止相对路径 `./A-xx.md`、禁止只写 Star 不给链接。转载 CSDN/知乎这两段不许删。句式见 template「文首 / 文末出链」。
+10. **「优化文章」不是压图。** 默认不 pngquant / 不把 PNG 体积当 P1。图只在事实画错、`csdnimg` 裂图、或用户明确要求重画时才动像素。
 
 ## 工作流（新章全流程 0→6）
 
@@ -134,14 +137,14 @@ description: >-
 
 骨架见 [article-template.md](article-template.md)。要点：
 
-- 封面 + 承接上章引用块；**文首 GitHub 绝对链接 CTA**（见 template；转载 CSDN/知乎须保留）
+- **标题 `#` 占正文第一行**，然后封面 + 承接上章引用块
+- **文首 + 文末 CTA** 都是 GitHub 绝对链（硬约束 9；template 固定句）。改旧稿时缺哪补哪
 - **TL;DR 带本机数字**
-- 原理：短 ASCII 或 1～2 张原理图；图注中文
+- 原理：短 ASCII 或 1～2 张原理图；图注中文；图用本地 `assets/`，禁止 `csdnimg`
 - 决策表 / SOP / 误区 / 钩子
 - §7 与 §10 **去重**（硬约束 8）
 - 实测：表 + 图；口径写明 median；有 NCU 则 §5.x 旁证小节
-- **文末 Star CTA**（template 固定句）
-- **文风 pass**：散文段走 `.cursor/skills/aspl-article-voice/SKILL.md`（去套话；**不许**拆表/TL;DR/命令）
+- **文风 pass**：散文段走 `.cursor/skills/aspl-article-voice/SKILL.md`（去套话；**不许**拆表/TL;DR/命令/文首文末 CTA）
 
 封面风格：深色底、青/琥珀；忌紫光堆徽章。设备内拷贝图例标 **GMEM→SMEM**（勿写成 Host CE / H2D）。
 
@@ -173,11 +176,13 @@ description: >-
 | 主命令一条 | binary `--mode sweep`（或章内等价） |
 | 脚本 | 无用户未要的 profile 壳；要了则 `ncu-only` 可用 |
 | 口径 | 未把 ncu 附着 ms 当结论；带宽章有 L2/useful 提醒 |
+| 文首文末 CTA | 仓库 `https` + Star；有示例则 `.cu` blob；下一篇为 module **目录**绝对链 |
+| 图 | 本地 `assets/`；无 `csdnimg`。**不要**把 PNG 体积/压缩列为 P0/P1 |
 | §7§10 | 无大段重复链接 |
 | 旁证（若做了） | 已落 `docs/results/` + 正文小节 |
 | 导航同步 | §5.1 清单与产物进度一致（用户要 commit 时一并纳入） |
 
-**能停则停**。P1（NCU/SASS/图注）不阻塞发布，除非用户要求补。
+**能停则停**。P1（NCU/SASS/图注错字）不阻塞发布，除非用户要求补。PNG 体积不是 P1。
 
 评估时对比相邻已发布章；区分「发布门槛」与「锦上添花」。
 
@@ -197,6 +202,8 @@ description: >-
 - **只 commit 正文/`.cu`，规划/README/Module 表仍写「待测」**
 - 过度美化拖延下一章；被 brainstorming 带去写无关 product spec
 - 为去 AI 味拆掉决策表 / TL;DR；或灌「说真的」「太离谱了」公众号腔
+- 文末只有「请 Star」没有仓库/`cu`/下一篇绝对链；下一篇写成 `./A-xx.md`
+- 把「优化文章」做成 pngquant / 压缩体积；未要求就重画图
 
 ## 快速启动话术
 
