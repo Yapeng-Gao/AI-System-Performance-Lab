@@ -8,6 +8,8 @@ GPU 编程中常出现一个反直觉的现象：你为了让逻辑更清晰，�
 
 ---
 
+**配套可复现**：[Yapeng-Gao/AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)（文章 + `.cu` + 实测表）。有用请 Star。 本章示例：[`examples/02_memory_optim/03_register_spill.cu`](https://github.com/Yapeng-Gao/AI-System-Performance-Lab/blob/main/examples/02_memory_optim/03_register_spill.cu)。
+
 ## TL;DR（工程结论清单）
 
 **微型决策流：**  
@@ -446,4 +448,6 @@ __global__ __launch_bounds__(256) void safer_kernel(...) { /* 同上逻辑 */ }
 - NVIDIA Developer Blog 与学术论文（寄存器缓存、SMRS 等）：建议你在后续章节（例如 L2/系统工程部分）真的用到时，再把对应条目提升为“正文已引用”，避免参考文献列表过长且难以维护。
 
 ---
+---
 
+> 本文配套代码与实测：[AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)。觉得有用请 Star，后续章更新更好找。

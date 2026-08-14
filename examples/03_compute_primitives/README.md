@@ -9,5 +9,6 @@ Module C 配套实验。正文在 `article/03_compute_primitives/`。
 | **C-03** | `03_atomics_contention.cu` | `--mode sweep` / `--mode modes` | `docs/results/C-03_*`；`python scripts/plot_c03_atomics_contention.py` |
 | **C-04** | `04_sync_layers.cu` | `--mode sweep` / `--mode sweep_grid` / `--mode modes` | `docs/results/C-04_*`；`python scripts/plot_c04_sync_layers.py` |
 | **C-05** | `05_kernel_fusion.cu` | `--mode sweep` / `--mode modes` | `docs/results/C-05_*`；`python scripts/plot_c05_kernel_fusion.py` |
+| **C-06** | `06_cuda_graph.cu` | `--mode sweep` / `--mode sweep_work` / `--mode modes` | `docs/results/C-06_*`；`python scripts/plot_c06_cuda_graph.py` |
 
 增删 `.cu` 后先重跑 `cmake`，再 build。

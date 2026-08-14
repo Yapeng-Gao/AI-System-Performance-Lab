@@ -15,6 +15,8 @@
 
 > 上章结论一句话 → 本章卡点一句话 → 本章交付一句话。
 
+**配套可复现**：[Yapeng-Gao/AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)（文章 + `.cu` + 实测表）。有用请 Star。 本章示例：[`examples/<module>/0N_<topic>.cu`](https://github.com/Yapeng-Gao/AI-System-Performance-Lab/blob/main/examples/<module>/0N_<topic>.cu)。
+
 ## B-0N. <标题>
 
 ## TL;DR（工程结论）
@@ -52,6 +54,14 @@
 
 ## 9. 小结与下一章
 三句话收敛 + 钩子。
+
+文末固定（转载到 CSDN/知乎时保留绝对链接）：
+
+```markdown
+---
+
+> 本文配套代码与实测：[AI-System-Performance-Lab](https://github.com/Yapeng-Gao/AI-System-Performance-Lab)。觉得有用请 Star，后续章更新更好找。
+```
 
 ## 10. 参考文献
 官方 / 工程 / 实证 / 前沿 分层编号；与大纲文献池对齐。

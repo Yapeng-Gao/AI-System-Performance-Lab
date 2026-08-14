@@ -13,7 +13,8 @@ description: >-
 
 面向本仓库的**工程索引型** CUDA 文章。默认对齐 **B-06～B-10** 已落地范式（B-09 起含 useful-payload / sectors；B-10 为 Checklist 无新 `.cu` 特例）。Module C 起沿用同一证据链，主题换并发原语。
 
-配套： [article-template.md](article-template.md) · [literature.md](literature.md) · 文风 [../aspl-article-voice/SKILL.md](../aspl-article-voice/SKILL.md) · 项目规则 `.cursor/rules/aspl-cuda-column.mdc`
+配套： [article-template.md](article-template.md) · [literature.md](literature.md) · 文风 [../aspl-article-voice/SKILL.md](../aspl-article-voice/SKILL.md) · 项目规则 `.cursor/rules/aspl-cuda-column.mdc`  
+作者外发备忘（本地、不入库）：`.cursor/publish-csdn-zhihu.md`
 
 ## 何时启用
 
@@ -133,11 +134,13 @@ description: >-
 
 骨架见 [article-template.md](article-template.md)。要点：
 
-- 封面 + 承接上章引用块；**TL;DR 带本机数字**
+- 封面 + 承接上章引用块；**文首 GitHub 绝对链接 CTA**（见 template；转载 CSDN/知乎须保留）
+- **TL;DR 带本机数字**
 - 原理：短 ASCII 或 1～2 张原理图；图注中文
 - 决策表 / SOP / 误区 / 钩子
 - §7 与 §10 **去重**（硬约束 8）
 - 实测：表 + 图；口径写明 median；有 NCU 则 §5.x 旁证小节
+- **文末 Star CTA**（template 固定句）
 - **文风 pass**：散文段走 `.cursor/skills/aspl-article-voice/SKILL.md`（去套话；**不许**拆表/TL;DR/命令）
 
 封面风格：深色底、青/琥珀；忌紫光堆徽章。设备内拷贝图例标 **GMEM→SMEM**（勿写成 Host CE / H2D）。

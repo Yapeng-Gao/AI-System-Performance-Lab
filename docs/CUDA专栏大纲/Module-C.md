@@ -1,8 +1,8 @@
 # Module C 大纲：核心编程技巧与并发原语（21–30）
 
-> 状态：🟡 进行中（**C-01～C-05 ✅**；下一章 C-06）。目录已随首章落地。
+> 状态：🟡 进行中（**C-01～C-06 ✅**；下一焦点 C-07 候选 / Checklist）。目录已随首章落地。
 >
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md)
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md)
 
 ## 模块目标
 
@@ -23,7 +23,7 @@
 | 23 | **C-03** | Atomics 与 contention | global vs shared；分层规约 / 聚合；**深挖** warp-aggregated | ✅ [大纲](C-03_atomics_contention.md) |
 | 24 | **C-04** | 同步分层（warp / block / grid） | `__syncwarp`、block barrier、grid sync；与 C-02 去重 | ✅ [大纲](C-04_sync_layers.md) |
 | 25 | **C-05** | Kernel fusion 代价边界 | fusion vs 多 kernel：寄存器 / occupancy / 可维护性 | ✅ [大纲](C-05_kernel_fusion.md) |
-| 26 | C-06 | CUDA Graph 与 launch overhead | 先测 launch 墙；生产 capture / PyTorch 留给 Module E | ⏳ |
+| 26 | **C-06** | CUDA Graph 与 launch overhead | 先测 launch 墙；生产 capture / PyTorch 留给 Module E | ✅ [大纲](C-06_cuda_graph.md) |
 | 27 | C-07 | Persistent / grid-wide **或** Warp specialization（候选） | 与 C-06/C-04/B-07 易重叠；**可裁可并** | ⏳ 候选 |
 | 28 | C-08 | 计算侧多 kernel 重叠（候选） | 可并入 C-06 一节；防滑回 A-08 | ⏳ 候选 |
 | 29 | C-09 | （预留：divergence 工程处方 / named barrier 等） | 开写 C-06 后再定；勿锁死空壳主题 | ⏳ 候选 |
@@ -55,6 +55,6 @@
 
 ## 开写交接
 
-- **已收束**：C-01～C-05（正文 + `docs/results/C-0N_*`）。
-- **当前焦点**：拆 C-06 CUDA Graph / launch overhead 大纲后再写 `.cu` / 正文。
+- **已收束**：C-01～C-06（正文 + `docs/results/C-0N_*`）。
+- **当前焦点**：开写前确认 C-07 候选命题，或先做 Module C Checklist。
 - **访存回退**：问题其实是带宽/布局时，先回 [`../results/B-10_checklist.md`](../results/B-10_checklist.md)。

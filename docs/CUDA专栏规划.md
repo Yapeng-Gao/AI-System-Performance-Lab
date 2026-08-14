@@ -99,7 +99,7 @@
 ### 4.2 当前焦点
 
 1. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
-2. **下一焦点：Module C / C-06**（[`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)；C-01～C-05 ✅）
+2. **下一焦点：Module C / C-07 候选或 Checklist**（[`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)；C-01～C-06 ✅）
 
 ### 4.3 工程索引型最低交付（新章）
 
@@ -142,7 +142,7 @@
 | 23 / C-03 | Atomics 与 contention | ✅ | [C-03_atomics_contention.md](CUDA专栏大纲/C-03_atomics_contention.md) |
 | 24 / C-04 | 同步分层（warp / block / grid） | ✅ | [C-04_sync_layers.md](CUDA专栏大纲/C-04_sync_layers.md) |
 | 25 / C-05 | Kernel fusion 代价边界 | ✅ | [C-05_kernel_fusion.md](CUDA专栏大纲/C-05_kernel_fusion.md) |
-| 26 / C-06 | CUDA Graph 与 launch overhead | ⏳ | 同上 |
+| 26 / C-06 | CUDA Graph 与 launch overhead | ✅ | [C-06_cuda_graph.md](CUDA专栏大纲/C-06_cuda_graph.md) |
 | 27 / C-07 | Persistent **或** Warp specialization（候选） | ⏳ 候选 | 同上 |
 | 28 / C-08 | 多 kernel 重叠（候选，可并入 C-06） | ⏳ 候选 | 同上 |
 | 29 / C-09 | 预留（divergence 处方 / named barrier 等） | ⏳ 候选 | 同上 |
