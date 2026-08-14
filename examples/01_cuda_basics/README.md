@@ -137,27 +137,18 @@ arch = sm_75
 
 #### 核心知识点
 
-1. **计算能力与架构识别**：根据 Compute Capability 识别 GPU 架构（Hopper、Ampere、Volta 等），并推算每个 SM 的 CUDA Core 数量。
+1. **计算能力与架构识别**：按 CC 区分 Ampere / **Ada（不是 Hopper）** / Hopper / Blackwell 消费卡（sm_120）与数据中心卡。未知 CC 的 Core/SM 印 Unknown。
 
-2. **SM 宏观拓扑**：展示多处理器数量、CUDA Core 总数等宏观计算资源。
+2. **SM 宏观拓扑**：SM 数；表驱动的 CUDA Core/SM（5090 按 128 推算）。
 
-3. **内存体系分析**：
-   - 全局内存容量（HBM/DDR）
-   - 内存总线宽度
-   - 理论峰值带宽计算
-   - **L2 Cache 大小**（关键性能指标，影响数据驻留控制）
+3. **内存体系**：
+   - 全局内存容量、总线宽度
+   - CUDA 12+ 无 `memoryClockRate` 时理论带宽印 `N/A`
+   - **L2 Cache**（芯片级，不是 GPC 私有）
 
-4. **SM 微架构资源**（Occupancy 分析关键）：
-   - Shared Memory 限制（每 Block 和动态分配）
-   - 寄存器数量限制
-   - 线程数限制（每 Block 和每 SM）
-   - Warp 大小
+4. **SM 资源上限**：SMEM / 寄存器 / 线程 / `warpSize`
 
-5. **现代特性支持侦测**：
-   - Unified Addressing (UVA)
-   - Managed Memory (Page Migration)
-   - TMA (Tensor Memory Accelerator) - Hopper 架构
-   - Thread Block Clusters - Hopper 架构
+5. **现代特性**：UVA、Managed Memory；TMA / Cluster 只报 **ISA 门槛 sm_90+**，不报加速比（实测在 B-08）
 
 #### 预期输出
 
@@ -170,17 +161,18 @@ Detected 1 CUDA Capable Device(s)
 [Device 0]: NVIDIA GeForce RTX 5090
 -----------------------------------------------------------------
   [Architecture]
-    Compute Capability      : 12.0 (Hopper / Blackwell class)
+    Compute Capability      : 12.0 (Blackwell consumer, e.g. RTX 50 / sm_120)
   [Compute Topology]
     Multiprocessors (SMs)   : 170
-    CUDA Cores / SM         : Unknown (Architecture not indexed)
+    CUDA Cores / SM         : 128
+    Total CUDA Cores        : 21760
     GPU Clock Rate          : N/A (removed in CUDA 12+)
   [Memory Hierarchy]
     Global Memory (HBM/DDR) : 31.36 GB
     Memory Bus Width        : 512-bit
     Memory Clock Rate       : N/A (removed in CUDA 12+)
     Theoretical Bandwidth   : N/A (use nvml API for accurate value)
-    L2 Cache Size           : 96.00 MB (Key for residency control)
+    L2 Cache Size           : 96.00 MB (chip-wide; not per-GPC)
   [SM Micro-Architecture]
     Max Shared Mem / Block  : 48.00 KB
     Max Shared Mem (Opt-in) : 99.00 KB (Dynamic)
@@ -191,8 +183,8 @@ Detected 1 CUDA Capable Device(s)
   [Modern Features Support]
     Unified Addressing      : Yes
     Managed Memory          : Yes
-    TMA (Tensor Mem Accel)  : Supported (Likely)
-    Thread Block Clusters   : Supported (Likely)
+    TMA ISA floor (sm_90+)  : Yes (measure in B-08)
+    Cluster ISA floor       : Yes (measure in B-08)
 ```
 
 #### 注意事项

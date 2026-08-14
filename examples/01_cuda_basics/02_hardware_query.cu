@@ -24,15 +24,20 @@
 // 注意：CUDA API 不直接提供 "Total Cores"，必须根据 Compute Capability 推算
 // 参考：NVIDIA CUDA Programming Guide -> Compute Capabilities
 int get_cores_per_sm(int major, int minor) {
+    // CUDA API 不直接给「总 CUDA Core」。未知 CC 返回 -1，由调用方印 Unknown。
+    // Blackwell consumer (RTX 50 / GB20x)
+    if (major == 12) {
+        return 128;
+    }
     // Hopper (H100)
     if (major == 9) {
         if (minor == 0) return 128; // GH100
     }
-    // Ampere
+    // Ampere / Ada
     if (major == 8) {
         if (minor == 0) return 64;  // GA100 (A100)
-        if (minor == 6) return 128; // GA102 (RTX 3090)
-        if (minor == 9) return 128; // Ada Lovelace (RTX 4090) - technically arch 8.9 in some contexts or 9.0 shim, usually treated as 128
+        if (minor == 6) return 128; // GA102 (RTX 30)
+        if (minor == 9) return 128; // Ada Lovelace (RTX 40) — sm_89, not Hopper
     }
     // Volta
     if (major == 7) {
@@ -43,7 +48,7 @@ int get_cores_per_sm(int major, int minor) {
         if (minor == 0) return 64;  // P100
         if (minor == 1) return 128; // GTX 1080
     }
-    return -1; // Unknown or older
+    return -1; // Unknown (e.g. sm_100 datacenter Blackwell: don't guess)
 }
 
 // --- 辅助函数：格式化存储大小 ---
@@ -79,8 +84,11 @@ int main() {
         // --- 1. 计算能力与架构 ---
         printf("  [Architecture]\n");
         printf("    Compute Capability      : %d.%d ", cc_major, cc_minor);
-        if (cc_major >= 9) printf("(Hopper / Blackwell class)\n");
-        else if (cc_major == 8) printf("(Ampere / Ada class)\n");
+        if (cc_major == 12) printf("(Blackwell consumer, e.g. RTX 50 / sm_120)\n");
+        else if (cc_major == 10 || cc_major == 11) printf("(Blackwell datacenter class)\n");
+        else if (cc_major == 9) printf("(Hopper)\n");
+        else if (cc_major == 8 && cc_minor == 9) printf("(Ada Lovelace — not Hopper)\n");
+        else if (cc_major == 8) printf("(Ampere)\n");
         else printf("(Volta/Pascal or older)\n");
 
         // --- 2. SM 宏观拓扑 ---
@@ -118,8 +126,7 @@ int main() {
         printf("    Theoretical Bandwidth   : N/A (use nvml API for accurate value)\n");
 #endif
 
-        // 关键点：L2 Cache 大小 (文章中提到的 H100 暴涨点)
-        printf("    L2 Cache Size           : %s (Key for residency control)\n", format_bytes(prop.l2CacheSize).c_str());
+        printf("    L2 Cache Size           : %s (chip-wide; not per-GPC)\n", format_bytes(prop.l2CacheSize).c_str());
 
         // --- 4. SM 内部资源 (Occupancy 分析关键) ---
         printf("  [SM Micro-Architecture]\n");
@@ -139,12 +146,10 @@ int main() {
         // Managed Memory (Page Migration)
         printf("    Managed Memory          : %s\n", prop.managedMemory ? "Yes" : "No");
 
-        // Hopper Specifics (TMA & Clusters)
-        // 这些通常在 CUDA 12+ 和 arch >= 90 上可用
-        // 目前 cudaDeviceProp 结构体在不同 CUDA 版本字段不同，这里做逻辑判断
-        bool is_hopper_plus = (cc_major >= 9);
-        printf("    TMA (Tensor Mem Accel)  : %s\n", is_hopper_plus ? "Supported (Likely)" : "No");
-        printf("    Thread Block Clusters   : %s\n", is_hopper_plus ? "Supported (Likely)" : "No");
+        // TMA / Cluster: ISA floor is sm_90+. This is not a measured speedup.
+        const bool tma_isa_floor = (cc_major >= 9);
+        printf("    TMA ISA floor (sm_90+)  : %s\n", tma_isa_floor ? "Yes (measure in B-08)" : "No");
+        printf("    Cluster ISA floor       : %s\n", tma_isa_floor ? "Yes (measure in B-08)" : "No");
 
         printf("\n");
     }
