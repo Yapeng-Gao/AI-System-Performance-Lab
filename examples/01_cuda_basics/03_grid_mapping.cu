@@ -1,22 +1,19 @@
 /**
  * [Module A] 03. CUDA 编程模型物理映射
- * Grid Mapper: 可视化 GigaThread Engine 的调度逻辑与物理 SM 映射
+ * Grid tracer: %smid + occupancy API. Not a kernel timer.
  *
- * 技术点：
- * 1. Inline PTX 读取硬件寄存器 %smid
- * 2. Global Atomic 追踪真实的执行顺序 (Execution Order)
- * 3. 模拟负载以观察 Wavefront (波次) 效应
+ * 口径：
+ * - atomic 序号 = block 内 thread 0 抢到的顺序，不是 GTE 派发日志
+ * - clock64 busy-wait 只为把 Block 拉长，不是 event median
+ * - Grid 用 cudaOccupancyMaxActiveBlocksPerMultiprocessor，不猜「每 SM 4 个 Block」
  */
 
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <map>
 #include <cstdio>
-#include <cstdint>      // for uint32_t
+#include <cstdint>
+#include <map>
+#include <algorithm>
 #include <cuda_runtime.h>
 
-// --- 1. 生产级错误检查宏 ---
 #define CUDA_CHECK(call) \
     do { \
         cudaError_t err = call; \
@@ -27,164 +24,126 @@
         } \
     } while (0)
 
-// --- 2. Device 端辅助函数: 读取物理 SM ID ---
-// 使用 PTX (Parallel Thread Execution) 汇编直接读取特殊寄存器 %smid
-// 这是一个比 CUDA C++ API 更底层的操作，兼容所有架构
 __device__ __forceinline__ uint32_t get_smid() {
     uint32_t ret;
     asm volatile("mov.u32 %0, %smid;" : "=r"(ret));
     return ret;
 }
 
-// --- 3. Kernel 定义 ---
-// 记录每个 Block 被分配到了哪个 SM，以及它是第几个开始执行的
 __global__ void scheduler_tracer_kernel(
-    int* d_block_to_sm,      // 输出: Block ID -> SM ID
-    int* d_execution_order,  // 输出: Block ID -> Order (第几个被调度)
-    long long* d_start_time, // 输出: Block ID -> Start Timestamp
-    int* d_global_counter,   // 全局计数器 (用于生成 Order)
-    int delay_iters          // 模拟计算负载，拉长执行时间以形成 Wave
+    int* d_block_to_sm,
+    int* d_execution_order,
+    int* d_global_counter,
+    int delay_iters
 ) {
-    // 我们只需要 Block 中的第一个线程来记录信息 (代表整个 Block)
     if (threadIdx.x == 0) {
         int bid = blockIdx.x;
-
-        // 1. 获取物理 SM ID
-        uint32_t sm_id = get_smid();
-        d_block_to_sm[bid] = (int)sm_id;
-
-        // 2. 获取全局执行顺序 (Atomic 操作是序列化的)
-        // 这代表了 GigaThread Engine 实际激活 Block 的顺序
+        d_block_to_sm[bid] = (int)get_smid();
         d_execution_order[bid] = atomicAdd(d_global_counter, 1);
 
-        // 3. 记录开始时间 (Cycle Count)
-        d_start_time[bid] = clock64();
-
-        // 4. 模拟负载 (Busy Wait)
-        // 如果 Kernel 跑得太快，所有 Block 瞬间完成，就看不到 "Wave" 效应了
-        // 这里强制让 Block 占用 SM 一段时间
         long long start_clock = clock64();
         while (clock64() - start_clock < delay_iters) {
-            // Busy loop
         }
     }
 }
 
 int main() {
-    std::cout << "[Host] Starting Grid Scheduler Tracer..." << std::endl;
-
-    // --- 1. 获取设备信息 ---
     int device_id = 0;
     cudaDeviceProp prop;
     CUDA_CHECK(cudaGetDeviceProperties(&prop, device_id));
     int num_sms = prop.multiProcessorCount;
-    printf("[Host] GPU: %s, Total SMs: %d\n", prop.name, num_sms);
+    printf("[Host] GPU: %s\n", prop.name);
+    printf("[Host] Compute Capability: %d.%d\n", prop.major, prop.minor);
+    printf("[Host] SM count: %d\n", num_sms);
 
-    // --- 2. 配置 Grid ---
-    // 为了观察 Wave 效应，我们需要启动比 SM 数量多得多的 Block
-    // 假设每个 SM 能并发跑 4 个 Block (具体取决于资源限制)，我们发射 4 波 (Waves)
-    int blocks_per_sm_capacity = 4; // 这是一个估计值，用于制造负载
-    int total_waves = 5;
-    int num_blocks = num_sms * blocks_per_sm_capacity * total_waves;
+    const int block_size = 1;
+    const int dyn_smem = 0;
+    int blocks_per_sm = 0;
+    CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &blocks_per_sm, scheduler_tracer_kernel, block_size, dyn_smem));
+    if (blocks_per_sm <= 0) {
+        fprintf(stderr, "[Host] occupancy API returned %d blocks/SM\n", blocks_per_sm);
+        return 1;
+    }
 
-    // 加上一个 "Tail" (尾巴)，演示 Tail Effect (最后一个 Block 独占 GPU)
-    num_blocks += 1;
+    const int total_waves = 5;
+    const int wave = num_sms * blocks_per_sm;
+    const int num_blocks = wave * total_waves + 1;  // +1 tail
 
-    printf("[Host] Launching %d Blocks (approx %d full waves + 1 tail)\n", num_blocks, total_waves * blocks_per_sm_capacity);
-
-    // --- 3. 内存分配 ---
-    size_t size_map = num_blocks * sizeof(int);
-    size_t size_time = num_blocks * sizeof(long long);
+    printf("[Host] Occupancy (this kernel, blockSize=%d): %d blocks/SM\n",
+           block_size, blocks_per_sm);
+    printf("[Host] Wave size ≈ %d blocks; launching %d blocks (%d waves + 1 tail)\n",
+           wave, num_blocks, total_waves);
+    printf("[Host] Note: <<<N,1>>> occupancy is NOT a 256-thread + SMEM kernel.\n");
 
     int *h_block_to_sm = new int[num_blocks];
     int *h_execution_order = new int[num_blocks];
-    long long *h_start_time = new long long[num_blocks];
+    int *d_block_to_sm = nullptr;
+    int *d_execution_order = nullptr;
+    int *d_global_counter = nullptr;
 
-    int *d_block_to_sm, *d_execution_order, *d_global_counter;
-    long long *d_start_time;
-
-    CUDA_CHECK(cudaMalloc(&d_block_to_sm, size_map));
-    CUDA_CHECK(cudaMalloc(&d_execution_order, size_map));
-    CUDA_CHECK(cudaMalloc(&d_start_time, size_time));
+    CUDA_CHECK(cudaMalloc(&d_block_to_sm, num_blocks * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_execution_order, num_blocks * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_global_counter, sizeof(int)));
-
     CUDA_CHECK(cudaMemset(d_global_counter, 0, sizeof(int)));
 
-    // --- 4. 启动 Kernel ---
-    // 模拟约 100,000 cycles 的负载 (取决于主频，约 50-100us)
-    int delay_cycles = 100000;
-
-    scheduler_tracer_kernel<<<num_blocks, 1>>>(
-        d_block_to_sm,
-        d_execution_order,
-        d_start_time,
-        d_global_counter,
-        delay_cycles
-    );
-
+    const int delay_cycles = 100000;
+    scheduler_tracer_kernel<<<num_blocks, block_size>>>(
+        d_block_to_sm, d_execution_order, d_global_counter, delay_cycles);
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    // --- 5. 回传数据 ---
-    CUDA_CHECK(cudaMemcpy(h_block_to_sm, d_block_to_sm, size_map, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(h_execution_order, d_execution_order, size_map, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(h_start_time, d_start_time, size_time, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_block_to_sm, d_block_to_sm,
+                          num_blocks * sizeof(int), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_execution_order, d_execution_order,
+                          num_blocks * sizeof(int), cudaMemcpyDeviceToHost));
 
-    // --- 6. 结果分析与可视化 (Host Side Analysis) ---
-
-    // 分析 A: 物理 SM 的负载均衡性 (Round-Robin 验证)
     std::map<int, int> sm_usage;
-    for (int i = 0; i < num_blocks; i++) {
-        sm_usage[h_block_to_sm[i]]++;
-    }
-
-    printf("\n[Analysis 1] SM Load Balance (Top 5 & Bottom 5):\n");
-    // ... (省略复杂的排序代码，直接打印部分 SM)
-    for (int i = 0; i < 5 && i < num_sms; i++) {
-        printf("  SM %02d processed %d blocks\n", i, sm_usage[i]);
-    }
-    printf("  ...\n");
-
-    // 分析 B: 尾部效应 (Tail Effect)
-    // 找到执行顺序最后的那个 Block
-    int last_executed_block_idx = -1;
+    int last_block = -1;
     int max_order = -1;
-
-    for(int i=0; i<num_blocks; i++) {
-        if(h_execution_order[i] > max_order) {
+    for (int i = 0; i < num_blocks; ++i) {
+        sm_usage[h_block_to_sm[i]]++;
+        if (h_execution_order[i] > max_order) {
             max_order = h_execution_order[i];
-            last_executed_block_idx = i;
+            last_block = i;
         }
     }
 
-    printf("\n[Analysis 2] Tail Effect Detection:\n");
-    printf("  The very last block to run was logical Block %d\n", last_executed_block_idx);
-    printf("  It ran on physical SM %d\n", h_block_to_sm[last_executed_block_idx]);
-    printf("  Note: While this block was running, other SMs might have been IDLE if the grid size wasn't aligned to waves.\n");
+    int min_cnt = num_blocks;
+    int max_cnt = 0;
+    for (int sm = 0; sm < num_sms; ++sm) {
+        int c = sm_usage[sm];
+        min_cnt = std::min(min_cnt, c);
+        max_cnt = std::max(max_cnt, c);
+    }
 
-    // 分析 C: 简单的 ASCII 调度图 (Visualizing First 100 Blocks)
-    printf("\n[Visualizer] Logical Block ID -> Physical SM ID (First 64 Blocks):\n");
-    for (int i = 0; i < 64; i++) {
-        if (i % 16 == 0) printf("\n  Blocks %03d-%03d: ", i, i+15);
+    printf("\n[Analysis 1] Blocks finished per SM (min=%d max=%d; first 5 SMs):\n",
+           min_cnt, max_cnt);
+    for (int sm = 0; sm < 5 && sm < num_sms; ++sm) {
+        printf("  SM %02d : %d blocks\n", sm, sm_usage[sm]);
+    }
+
+    printf("\n[Analysis 2] Tail (atomic order, NOT a GTE log):\n");
+    printf("  Last numbered logical Block %d ran on SM %d (order=%d)\n",
+           last_block, h_block_to_sm[last_block], max_order);
+
+    printf("\n[Visualizer] logical Block -> SM (first 64):\n");
+    for (int i = 0; i < 64 && i < num_blocks; ++i) {
+        if (i % 16 == 0) printf("\n  Blocks %03d-%03d: ", i, i + 15);
         printf("%3d ", h_block_to_sm[i]);
     }
     printf("\n\n");
 
-    // 验证逻辑: 检查是否所有 SM 都至少工作了
-    bool all_sms_active = sm_usage.size() == num_sms;
-    if (all_sms_active) {
-        printf("[Conclusion] GigaThread Engine successfully distributed work across ALL %d SMs. \u2705\n", num_sms);
+    if ((int)sm_usage.size() == num_sms) {
+        printf("[Conclusion] Every SM received at least one Block.\n");
     } else {
-        printf("[Conclusion] Some SMs were idle! (Check grid size or device status) \u274C\n");
+        printf("[Conclusion] Only %zu / %d SMs saw a Block. Check device/grid.\n",
+               sm_usage.size(), num_sms);
     }
 
-    // 资源清理
     delete[] h_block_to_sm;
     delete[] h_execution_order;
-    delete[] h_start_time;
     CUDA_CHECK(cudaFree(d_block_to_sm));
     CUDA_CHECK(cudaFree(d_execution_order));
-    CUDA_CHECK(cudaFree(d_start_time));
     CUDA_CHECK(cudaFree(d_global_counter));
-
     return 0;
 }

@@ -8,7 +8,7 @@
 |------|------|----------|--------|
 | **第 1 章** | `01_hello_modern.cu` | CUDA 核心概念总览 | Grid-Block-Thread 模型、错误检查、异步执行、Unified Memory |
 | **第 2 章** | `02_hardware_query.cu` | GPU 硬件架构深度解析 | SM 架构、内存层次、L2 Cache、Tensor Core 能力、带宽分析 |
-| **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GigaThread Engine 调度、SM 映射、Wavefront 效应、PTX 内联汇编 |
+| **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GTE 派发、occupancy API、尾波、`%smid` |
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT, Divergence 与 Replay | Warp 发散、Bank Conflict、指令重播、性能量化 |
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
 | **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
@@ -196,57 +196,36 @@ Detected 1 CUDA Capable Device(s)
 
 ### 第 3 章：CUDA 编程模型物理映射 (`03_grid_mapping.cu`)
 
-**Grid Mapper**：可视化 GigaThread Engine 的调度逻辑与物理 SM 映射。
+**Grid tracer**：`%smid` 看 Block 落在哪颗 SM；occupancy API 定波次。不是 kernel 计时。
 
 #### 核心知识点
 
-1. **PTX 内联汇编**：使用 `asm volatile("mov.u32 %0, %smid;")` 直接读取硬件特殊寄存器 `%smid`，获取 Block 实际运行的物理 SM ID。这是比 CUDA C++ API 更底层的操作，兼容所有架构。
+1. **PTX `%smid`**：`mov.u32 %0, %smid` 读物理 SM。不是公开稳定 ABI。
+2. **occupancy API**：`cudaOccupancyMaxActiveBlocksPerMultiprocessor` 定本 kernel 的 blocks/SM，再 launch `5 * wave + 1`。不要猜每 SM 4 个 Block。
+3. **atomic 序号**：thread 0 抢序号，**不是 GTE 派发日志**。
+4. **busy-wait**：`clock64` 只为把 Block 拉长；median 计时去 A-08。
 
-2. **执行顺序追踪**：通过 Global Atomic 操作（`atomicAdd`）追踪 Block 的真实执行顺序（Execution Order），验证 GigaThread Engine 的调度策略。
+#### 预期输出（数字以本机为准）
 
-3. **Wavefront 效应观察**：
-   - 通过模拟计算负载（Busy Wait）拉长 Block 执行时间
-   - 观察多波次（Wave）调度模式
-   - 检测尾部效应（Tail Effect）：最后一个 Block 可能独占 GPU
+```text
+[Host] GPU: NVIDIA GeForce RTX 5090
+[Host] Compute Capability: 12.0
+[Host] SM count: 170
+[Host] Occupancy (this kernel, blockSize=1): <blocks/SM>
+[Host] Wave size ≈ <SM × blocks/SM> blocks; launching <5 waves + 1 tail> blocks
+[Host] Note: <<<N,1>>> occupancy is NOT a 256-thread + SMEM kernel.
 
-4. **负载均衡分析**：
-   - 统计每个 SM 处理的 Block 数量
-   - 验证 Round-Robin 分配策略
-   - 可视化 Block ID 到 SM ID 的映射关系
-
-#### 预期输出
-
-```shell
-[Host] Starting Grid Scheduler Tracer...
-[Host] GPU: NVIDIA GeForce RTX 5090, Total SMs: 170
-[Host] Launching 3401 Blocks (approx 20 full waves + 1 tail)
-
-[Analysis 1] SM Load Balance (Top 5 & Bottom 5):
-  SM 00 processed 21 blocks
-  SM 01 processed 20 blocks
-  SM 02 processed 20 blocks
-  SM 03 processed 20 blocks
-  SM 04 processed 20 blocks
+[Analysis 1] Blocks finished per SM (min=... max=...; first 5 SMs):
+  SM 00 : ...
   ...
 
-[Analysis 2] Tail Effect Detection:
-  The very last block to run was logical Block 3350
-  It ran on physical SM 162
-  Note: While this block was running, other SMs might have been IDLE if the grid size wasn't aligned to waves.
+[Analysis 2] Tail (atomic order, NOT a GTE log):
+  Last numbered logical Block ... ran on SM ...
 
-[Visualizer] Logical Block ID -> Physical SM ID (First 64 Blocks):
-
-  Blocks 000-015:   0   1  22  23  44  45  66  67  88  89 110 111 132 133   2   3
-  Blocks 016-031:  24  25  46  47  68  69  90  91 112 113 134 135   4   5  26  27
-  Blocks 032-047:  48  49  70  71  92  93 114 115 136 137   6   7  28  29  50  51
-  Blocks 048-063:  72  73  94  95 116 117 138 139 154 155   8   9  30  31  52  53
+[Visualizer] logical Block -> SM (first 64):
+  ...
+[Conclusion] Every SM received at least one Block.
 ```
-
-#### 技术细节
-
-- **SM ID 读取**：使用 PTX 汇编直接访问硬件寄存器，比软件 API 更底层、更准确
-- **原子操作**：`atomicAdd` 保证执行顺序的全局一致性，用于追踪调度顺序
-- **时钟计数**：使用 `clock64()` 记录 Block 启动时间戳，可用于分析调度延迟
 
 ---
 
