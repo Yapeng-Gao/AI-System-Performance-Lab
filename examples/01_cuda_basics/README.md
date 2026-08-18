@@ -11,7 +11,7 @@
 | **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GTE 派发、occupancy API、尾波、`%smid` |
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT / Divergence / Replay | mask 串行、ITS 前进、SMEM replay；`clock64` median |
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI | 同一份头对 offsetof；`c[0]` / CALL；Occupancy API |
-| **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
+| **第 6 章** | `06_nvrtc_jit.cpp` | nvcc / Fatbin / NVRTC | 本机 `compute_XY`；编译墙钟；verify 7.0 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
 | **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
 | **第 9 章** | `09_debug_and_sanitizer.cu` | 调试与错误诊断 | Compute Sanitizer、内存越界检测、数据竞争检测、非法同步检测 |
@@ -293,35 +293,27 @@ Detected 1 CUDA Capable Device(s)
 
 ---
 
-### 第 6 章：NVRTC 运行时编译与 Driver API (`06_nvrtc_jit.cpp`)
+### 第 6 章：工具链 / NVRTC (`06_nvrtc_jit.cpp`)
 
-**运行时特化 + 动态加载**：使用 NVRTC 在运行时生成 PTX，并通过 Driver API 加载执行。
+**不是 kernel 墙钟。** `nvrtcCompileProgram` 的 Host 毫秒是编译墙钟。
 
 #### 核心知识点
 
-1. **运行时特化**：在 Host 端将常量（如 `scale=5.0f`）写入 Kernel 源码字符串，触发编译器常量折叠。  
-2. **架构自适应**：运行时获取当前 GPU 的 Compute Capability，生成对应 `--gpu-architecture=compute_XY`，避免旧卡（如 1050, sm_61）出现 `CUDA_ERROR_INVALID_PTX`。  
-3. **混合 API**：NVRTC（Runtime Compilation）+ Driver API（`cuModuleLoadData` / `cuLaunchKernel`）+ Runtime API（`cudaMalloc` / `cudaMemcpy`）混用。  
-4. **日志与错误处理**：拉取 NVRTC 编译日志，Fail Fast。  
+1. **特化**：把 `5.0f` 写进源码字符串。证明能编、能跑，不是立即数加速比。
+2. **架构**：`--gpu-architecture=compute_XY` 用本机 CC，避免 `CUDA_ERROR_INVALID_PTX`。
+3. **加载**：Driver API `cuModuleLoadData` / `cuLaunchKernel`；内存仍可用 Runtime。
 
-#### 运行
+#### 预期输出（数字以本机为准）
 
-```bash
-# Linux
-./bin/01_cuda_basics_06_nvrtc_jit
-
-# Windows (PowerShell)
-.\cmake-build-debug\bin\01_cuda_basics_06_nvrtc_jit.exe
-```
-
-#### 预期输出（老卡示例：GTX 1050, sm_61）
-
-```shell
-[Host] Starting NVRTC JIT Compilation Demo...
-[NVRTC] Specialized Source Code generated:
-   out[i] = 5.0f * x[i] + y[i];
-[NVRTC] PTX generated (1272 bytes).
-[Host] Verification PASSED! Result is 7.0
+```text
+[Host] GPU: NVIDIA GeForce RTX 5090
+[Host] Compute Capability: 12.0  sm_120
+[Host] Not CUDA event kernel time (see A-08).
+[NVRTC] specialized: out[i] = 5.0f * x[i] + y[i];
+[NVRTC] arch: --gpu-architecture=compute_120
+[NVRTC] compile host-ms: ...
+[NVRTC] PTX bytes: ...
+[Host] verify: PASS  expected 5.0*1.0+2.0=7.0
 ```
 
 ---
