@@ -10,7 +10,7 @@
 | **第 2 章** | `02_hardware_query.cu` | GPU 硬件架构深度解析 | SM 架构、内存层次、L2 Cache、Tensor Core 能力、带宽分析 |
 | **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GTE 派发、occupancy API、尾波、`%smid` |
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT / Divergence / Replay | mask 串行、ITS 前进、SMEM replay；`clock64` median |
-| **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
+| **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI | 同一份头对 offsetof；`c[0]` / CALL；Occupancy API |
 | **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
 | **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
@@ -260,117 +260,36 @@ Detected 1 CUDA Capable Device(s)
 
 ---
 
-### 第 5 章：Kernel 结构与 ABI 分析 (`05_kernel_structure.cu`)
+### 第 5 章：Kernel 结构与 ABI (`05_kernel_structure.cu`)
 
-**ABI 深度解析**：揭示 Host-Device 边界上的陷阱与优化技巧。
+**不是 kernel 墙钟。** 打印 Host/Device 布局，以及 `cudaFuncGetAttributes` + occupancy API。
 
 #### 核心知识点
 
-1. **结构体对齐陷阱**：
-   - Host 编译器（GCC/MSVC）和 Device 编译器（NVCC）可能采用不同的 Padding 策略
-   - `__align__` 关键字强制对齐，避免结构体布局不一致导致的 Bug
-   - 演示不同对齐策略对内存布局的影响
+1. **同一份头**：Default / `alignas` / `#pragma pack(1)`。Host 与 Device 的 `offsetof` 应当一致；出事是两份定义。
+2. **SASS**：`__noinline__` 常见 `CALL`；参数常见 `c[0x0][…]`。`cuobjdump -sass`，不要包 event。
+3. **`__launch_bounds__(256, 4)`**：occupancy 契约。regs / local / blocks/SM 以本机打印为准。spill 去 B-03。
 
-2. **函数内联控制**：
-   - `__noinline__`：强制函数不被内联，用于调试和 ABI 分析
-   - `__forceinline__`：强制内联，消除函数调用开销
-   - 使用 `cuobjdump` 验证内联行为（查找 CAL 指令）
+#### 预期输出（数字以本机为准）
 
-3. **Launch Bounds 优化**：
-   - `__launch_bounds__(MAX_THREADS, MIN_BLOCKS)` 提示编译器优化寄存器使用
-   - 影响 Occupancy 和寄存器分配策略
-   - 通过 `-Xptxas=-v` 查看寄存器使用情况
+```text
+[Host] GPU: NVIDIA GeForce RTX 5090
+[Host] Compute Capability: 12.0  sm_120
+[Host] Not CUDA event kernel time (see A-08).
 
-#### 预期输出
+[Host] Same header, three layouts:
+[Host]   DefaultLayout offsetof(b)=4 sizeof=8
+[Host]   AlignedLayout offsetof(b)=4 sizeof=8
+[Host]   PackedLayout  offsetof(b)=1 sizeof=5
+[Device] ... same offsetof/sizeof; values 42 / 100 / 7
 
-```shell
-=== [Module A] 05. Kernel Structure & ABI Analysis ===
+[Host] Inline kernels ran. SASS: cuobjdump -sass <bin>  (CALL / c[0x0]).
 
-[Host] Checking Structure Layout...
-[Host]   DangerousStruct: Offset of b = 4 bytes
-[Host]   SafeStruct:      Offset of b = 4 bytes
-[Host] Launching Alignment Kernel...
-[Device] DangerousStruct: Offset of b = 4 bytes
-[Device] SafeStruct:      Offset of b = 4 bytes
-[Device] Values: s1.b=42 (Expected 42), s2.b=100 (Expected 100)
-
-[Host] Inlining kernels executed. Run '05_inspect_asm.sh' to see SASS differences.
-
-[Host] Launch Bounds kernels executed.
-       CHECK YOUR COMPILE OUTPUT (Ninja log) for 'ptxas info' lines!
-       You should see different register counts for default vs bounded kernels.
+[Host] heavy_default: regs=... local=...B  occupancy=... blocks/SM @ 256 threads
+[Host] heavy_bounded: regs=... local=...B  occupancy=... blocks/SM @ 256 threads
 ```
 
-#### ABI 分析工具
-
-项目提供了 `05_inspect_asm.sh` 脚本，用于分析 SASS 代码中的内联行为：
-
-```bash
-cd examples/01_cuda_basics
-bash 05_inspect_asm.sh
-```
-
-**注意**：脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）。
-
-该脚本会：
-- 搜索 SASS 代码中的 `CAL`（Call）指令
-- 验证 `__noinline__` 函数是否真的没有内联
-- 分析函数调用的实际行为
-```shell
-                                                                                      /* 0x000fcc0000000f00 */
-        /*0050*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
-                                                                                      /* 0x000fea0003c00000 */
-        /*0060*/                   MOV R3, 0x4 ;                                      /* 0x0000000400037802 */
---
-        /*0120*/                   MOV R21, 0x0 ;                                     /* 0x0000000000157802 */
-                                                                                      /* 0x000fcc0000000f00 */
-        /*0130*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
-                                                                                      /* 0x001fea0003c00000 */
-        /*0140*/                   IMAD.MOV.U32 R8, RZ, RZ, 0x4 ;                     /* 0x00000004ff087424 */
---
-        /*01e0*/                   MOV R21, 0x0 ;                                     /* 0x0000000000157802 */
-                                                                                      /* 0x000fcc0000000f00 */
-        /*01f0*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
-                                                                                      /* 0x001fea0003c00000 */
-        /*0200*/                   IMAD.MOV.U32 R8, RZ, RZ, c[0x0][0x164] ;           /* 0x00005900ff087624 */
---
-        /*02a0*/                   MOV R21, 0x0 ;                                     /* 0x0000000000157802 */
-                                                                                      /* 0x000fcc0000000f00 */
-        /*02b0*/                   CALL.ABS.NOINC 0x0 ;                               /* 0x0000000000007943 */
-                                                                                      /* 0x001fea0003c00000 */
-        /*02c0*/                   EXIT ;                                             /* 0x000000000000794d */
-
---------------------------------------------------------
-NOTE:
-1. 'CAL' instruction means a subroutine call (no-inline).
-2. If you don't see CAL for forceinline_kernel, it was successfully inlined.
-========================================================
-
-========================================================
-   SASS Analysis: Parameter Loading (Constant Memory)
-========================================================
-Searching for Constant Memory loads (c[0x0])...
-These instructions move kernel arguments from Bank 0 to Registers:
-
-        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
-        /*0040*/                   ISETP.GE.AND P0, PT, R0, c[0x0][0x168], PT ;       /* 0x00005a0000007a0c */
-        /*ef80*/                   IMAD.WIDE R2, R0, R3, c[0x0][0x160] ;              /* 0x0000580000027625 */
-        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
-        /*0040*/                   ISETP.GE.AND P0, PT, R0, c[0x0][0x168], PT ;       /* 0x00005a0000007a0c */
-        /*ef80*/                   IMAD.WIDE R2, R0, R3, c[0x0][0x160] ;              /* 0x0000580000027625 */
-        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
-        /*0030*/                   IADD3 R0, R2, c[0x0][0x168], RZ ;                  /* 0x00005a0002007a10 */
-        /*0040*/                   IMAD.WIDE R2, R2, R3, c[0x0][0x160] ;              /* 0x0000580002027625 */
-        /*0000*/                   MOV R1, c[0x0][0x28] ;                             /* 0x00000a0000017a02 */
-
-... (showing first 10 occurrences)
-========================================================
-```
-#### 注意事项
-
-- 结构体对齐问题在实际项目中可能导致难以调试的 Bug
-- 函数内联会影响调试能力，但可以提升性能
-- `__launch_bounds__` 需要根据实际 Occupancy 需求调整参数
+可选 SASS：`cuobjdump -sass ./bin/01_cuda_basics_05_kernel_structure`（Linux `grep -E 'CALL|c\\[0x0\\]'`，Windows `findstr CALL`）。仓库里的 `05_inspect_asm.sh` 仍可用。
 
 ---
 
