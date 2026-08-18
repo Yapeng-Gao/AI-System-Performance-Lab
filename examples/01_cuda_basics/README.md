@@ -9,7 +9,7 @@
 | **第 1 章** | `01_hello_modern.cu` | CUDA 核心概念总览 | Grid-Block-Thread 模型、错误检查、异步执行、Unified Memory |
 | **第 2 章** | `02_hardware_query.cu` | GPU 硬件架构深度解析 | SM 架构、内存层次、L2 Cache、Tensor Core 能力、带宽分析 |
 | **第 3 章** | `03_grid_mapping.cu` | CUDA 编程模型物理映射 | GTE 派发、occupancy API、尾波、`%smid` |
-| **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT, Divergence 与 Replay | Warp 发散、Bank Conflict、指令重播、性能量化 |
+| **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT / Divergence / Replay | mask 串行、ITS 前进、SMEM replay；`clock64` median |
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI 分析 | 结构体对齐陷阱、函数内联控制、Launch Bounds 优化 |
 | **第 6 章** | `06_nvrtc_jit.cpp` | NVRTC 运行时编译与 Driver API | 运行时特化、PTX 动态加载、架构自适应 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
@@ -231,67 +231,30 @@ Detected 1 CUDA Capable Device(s)
 
 ### 第 4 章：线程调度：SIMT, Divergence 与 Replay (`04_warp_divergence.cu`)
 
-**Micro-benchmark**：量化分支发散与 Shared Memory Bank Conflict 的物理代价。
+**lane0 `clock64` median**（warmup 后 21 次）。不是 CUDA event kernel 时间。
 
 #### 核心知识点
 
-1. **Warp Divergence（分支发散）**：
-   - **Baseline 模式**：所有线程执行相同路径，SIMT 单元满载运行
-   - **Divergent 模式**：奇偶线程走不同分支，硬件串行化执行（先执行偶数线程，再执行奇数线程）
-   - **性能影响**：理论吞吐量减半（理想情况 2.0x 性能损失）
+1. **Divergence**：无分支 FMA vs 奇偶 `if`；结果写入 `sink` 防止 DCE（旧构建会打出 1 cycle）。
+2. **Replay**：SMEM stride=1 vs stride=32。消冲突去 B-02。
+3. **口径**：比值看形状，不要把 2× / 32× 当账单；event 去 A-08。
 
-2. **Bank Conflict（存储体冲突）**：
-   - **无冲突访问**：Stride=1，32 个线程访问不同 Bank，1 个周期完成
-   - **32-way 冲突**：Stride=32，所有线程访问同一 Bank，指令重播 32 次
-   - **性能影响**：理论延迟增加 32 倍（理想情况 32.0x 性能损失）
+#### 预期输出（数字以本机为准）
 
-3. **性能测量技术**：
-   - 使用 `clock64()` 进行高精度周期计数
-   - 通过 `#pragma unroll` 减少循环开销，突出被测操作
-   - 使用 `volatile` 防止编译器优化掉内存访问
+```text
+[Host] GPU: NVIDIA GeForce RTX 5090
+[Host] Compute Capability: 12.0
+[Host] Metric: lane0 clock64 median (warmup=5, runs=21, iters=4096)
+[Host] Not CUDA event kernel time (see A-08).
 
-4. **编译器优化防护**：
-   - 使用 `volatile` 变量防止编译器优化
-   - 通过死代码路径（`if (val == 999999.0f)`）防止死代码消除
+[Divergence] uniform cycles : ...
+[Divergence] odd/even if    : ...
+[Divergence] ratio          : ...x  (textbook isolation ~2x; not a bill)
 
-#### 预期输出
-
-```shell
-=================================================================
-   AI System Performance Lab - SIMT & Replay Analyzer
-=================================================================
-Running on GPU: NVIDIA GeForce RTX 5090 (Arch sm_120)
-
-[Experiment 1] Measuring Warp Divergence Cost (ALU)
-  Baseline (No Branch) Cycles : 1
-  Divergent (If-Else) Cycles  : 1
-  >> Performance Penalty      : 1.00x Slower (Ideal: 2.0x)
-
-[Experiment 2] Measuring Instruction Replay Cost (Shared Mem)
-  Linear Access (No Conflict) : 39935 cycles
-  Stride-32 (32-way Conflict) : 162122 cycles
-  >> Replay Penalty           : 4.06x Slower (Ideal: 32.0x)
-
-Note: 'Ideal' assumes pure isolation. Real hardware pipelines may hide some latency.
+[Replay]     stride-1 cycles : ...
+[Replay]     stride-32       : ...
+[Replay]     ratio           : ...x  (textbook 32-way ~32x; padding -> B-02)
 ```
-
-#### 实验设计
-
-- **实验 1：Math Divergence**
-  - 对比无分支代码 vs 奇偶分支代码
-  - 验证 ALU 利用率减半（SIMT 串行化）
-  - 使用浮点运算制造计算负载
-
-- **实验 2：Bank Conflict Replay**
-  - 对比无冲突访问 vs 32-way Bank Conflict
-  - 验证指令重播机制
-  - 使用 Shared Memory 读后写操作制造依赖链
-
-#### 注意事项
-
-- 实际硬件流水线可能会隐藏部分延迟，因此实测值可能略低于理想值
-- `clock64()` 返回的是 SM 时钟周期，不是绝对时间
-- 循环次数（`PER_KERNEL_ITERS`）需要足够大以摊薄测量开销，但不要触发 TDR（超时检测与恢复）
 
 ---
 
