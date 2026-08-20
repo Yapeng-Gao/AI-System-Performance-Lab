@@ -47,7 +47,7 @@
 
 | 模块 | 范围 | 状态 | 大纲 |
 |---|---|---|---|
-| **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | ✅ | 见下表（无独立长大纲分册） |
+| **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | 🟡 A-08 起仍为旧稿 | A-01～A-07 ✅；[A-07 大纲](CUDA专栏大纲/A-07_memory_spaces.md) |
 | **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | ✅ B-01～B-10 | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
 | **C** 核心编程技巧与并发原语 | 21–30 | 🟡 C-01～C-06 ✅ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
 | **D** 计算原语与高级算子 | 31–40 | ⏳ | [`CUDA专栏大纲/Module-D.md`](CUDA专栏大纲/Module-D.md) |
@@ -55,7 +55,7 @@
 
 ---
 
-## 3. Module A：CUDA 基础与 GPU 架构 ✅
+## 3. Module A：CUDA 基础与 GPU 架构 🟡
 
 > **目标**：逻辑并行模型 → 硬件执行实体的物理映射；养成可复现性能分析习惯（SASS/NSYS/NCU）。
 
@@ -68,7 +68,7 @@
 | 4 / A-04 | 线程调度：SIMT / Divergence / Replay | `article/01_cuda_basic/A-04*.md` ✅ | `examples/01_cuda_basics/04_warp_divergence.cu` ✅ |
 | 5 / A-05 | Kernel 结构与 ABI / SASS 视角 | `article/01_cuda_basic/A-05*.md` ✅ | `examples/01_cuda_basics/05_kernel_structure.cu` ✅ |
 | 6 / A-06 | CUDA 工具链：NVCC / NVRTC | `article/01_cuda_basic/A-06*.md` ✅ | `examples/01_cuda_basics/06_nvrtc_jit.cpp` ✅ |
-| 7 / A-07 | 内存模型全景：UVA / Memory Spaces | `article/01_cuda_basic/A-07*.md` ✅ | `examples/01_cuda_basics/07_memory_spaces.cu` ✅ |
+| 7 / A-07 | 内存模型全景：UVA / Memory Spaces | `article/01_cuda_basic/A-07*.md` ✅（[大纲](CUDA专栏大纲/A-07_memory_spaces.md)） | `examples/01_cuda_basics/07_memory_spaces.cu` ✅ |
 | 8 / A-08 | 异步执行：Stream / Event / Pipeline | `article/01_cuda_basic/A-08*.md` ✅ | `examples/01_cuda_basics/08_async_pipeline.cu` ✅ |
 | 9 / A-09 | 调试与错误诊断：Compute Sanitizer | `article/01_cuda_basic/A-09*.md` ✅ | `examples/01_cuda_basics/09_debug_and_sanitizer.cu` ✅ |
 | 10 / A-10 | 性能建模：Roofline / SOL | `article/01_cuda_basic/A-10*.md` ✅ | `examples/01_cuda_basics/10_roofline_demo.cu` ✅ |
@@ -100,8 +100,9 @@
 
 ### 4.2 当前焦点
 
-1. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
-2. **下一焦点：Module C / C-07 候选或 Checklist**（[`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)；C-01～C-06 ✅）
+1. **当前写作：下一章 A-08**（Stream / Event；A-07 空间/UVA 已按工程索引重写）
+2. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
+3. **Module C**：C-01～C-06 ✅；其后 C-07/Checklist（[`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)）
 
 ### 4.3 工程索引型最低交付（新章）
 

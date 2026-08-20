@@ -12,7 +12,7 @@
 | **第 4 章** | `04_warp_divergence.cu` | 线程调度：SIMT / Divergence / Replay | mask 串行、ITS 前进、SMEM replay；`clock64` median |
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI | 同一份头对 offsetof；`c[0]` / CALL；Occupancy API |
 | **第 6 章** | `06_nvrtc_jit.cpp` | nvcc / Fatbin / NVRTC | 本机 `compute_XY`；编译墙钟；verify 7.0 |
-| **第 7 章** | `07_memory_spaces.cu` | 内存模型全景 | 地址空间探测、UVA Zero-Copy、Local Memory Spilling、__restrict__ 优化 |
+| **第 7 章** | `07_memory_spaces.cu` | 内存空间 / UVA | 地址图；mapped 读 PASS；`localSizeBytes > 0` |
 | **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
 | **第 9 章** | `09_debug_and_sanitizer.cu` | 调试与错误诊断 | Compute Sanitizer、内存越界检测、数据竞争检测、非法同步检测 |
 | **第 10 章** | `10_roofline_demo.cu` | 性能建模第一性原理 | Roofline 模型、带宽极限测试、算力极限测试、Arithmetic Intensity |
@@ -318,126 +318,30 @@ Detected 1 CUDA Capable Device(s)
 
 ---
 
-### 第 7 章：内存模型全景 (`07_memory_spaces.cu`)
+### 第 7 章：内存空间 / UVA (`07_memory_spaces.cu`)
 
-**内存层次深度解析**：探索 CUDA 的地址空间、UVA Zero-Copy、Local Memory Spilling 与 `__restrict__` 优化。
+**不是 kernel 墙钟，也不是 PCIe 账单。** 主证据是 mapped 读通，以及 spill kernel 的 `localSizeBytes > 0`。吞吐去 B-06，UM 去 B-05。
 
 #### 核心知识点
 
-1. **地址空间探测**：
-   - **Global Memory (HBM)**：设备全局内存，通过 `cudaMalloc` 分配
-   - **Global Variable (Static)**：设备静态变量，使用 `__device__` 声明
-   - **Shared Memory (SRAM)**：每个 Block 共享的片上高速缓存
-   - **Local Variable (Stack)**：线程局部变量，通常存储在寄存器中
-   - **Host Pinned Memory (UVA)**：主机固定内存，可通过 UVA 直接访问
+1. **地址图**：`cudaMalloc` / `__device__` / `__shared__` / 取地址的 local / mapped Host。取地址 → Local（HBM），不是片上栈。
+2. **UVA**：打印 `cudaDevAttrUnifiedAddressing`。统一的是 VA，不是 UM 迁页。
+3. **Mapped**：kernel 读一个 `int`，期望 PASS。不要循环扫 Host。
+4. **`__restrict__`**：别名契约；不报 `LDG.NC` 加速比。
 
-2. **UVA Zero-Copy 实战**：
-   - 使用 `cudaHostAllocMapped` 分配主机固定内存
-   - 通过 Unified Virtual Addressing (UVA) 实现 GPU 直接访问 CPU 内存
-   - 验证 Zero-Copy 功能（无需显式 `cudaMemcpy`）
-   - **性能警告**：Zero-Copy 走 PCIe 总线（~64GB/s），远慢于 HBM（~2000GB/s）
+#### 预期输出（数字以本机为准）
 
-3. **Local Memory Spilling（寄存器溢出）**：
-   - 当局部变量过多或使用动态索引时，编译器会将数据溢出到 Local Memory
-   - Local Memory 实际存储在 HBM 中，访问延迟极高（~400 cycles）
-   - 在 SASS 代码中表现为 `LDL`（Local Load）和 `STL`（Local Store）指令
-   - 会污染 L1 Cache，严重影响性能
-
-4. **`__restrict__` 优化**：
-   - 向编译器保证指针不会重叠（Aliasing）
-   - 允许编译器进行更激进的优化：
-     - 向量化加载（`LDG.128`）
-     - 使用 Texture Cache（`LDG.NC`）
-     - 减少内存访问指令数量
-   - 对比无 `__restrict__` 和有 `__restrict__` 的 Kernel，观察 SASS 代码差异
-
-#### 预期输出
-
-```shell
-[Host] Starting Memory Hierarchy Analysis...
-[Host] Launching Address Probe...
-
-[Device] === Memory Address Map ===
-  Global Memory (HBM) Ptr:    0x78138b000000
-  Global Variable (Static):   0x78138b400800
-  Shared Memory (SRAM):       0x781400000400 (Small offset usually)
-  Local Variable (Stack):     0x78139dfffce0 (If address taken -> Local Mem)
-  Host Pinned Ptr (UVA/PCIe): 0x78138b200000
-================================
-
-[Device] Read from Host Pinned Memory: 999 (Success! UVA works)
-
-[Host] To see Local Memory Spilling instructions (LDL/STL),
-       please run the accompanying '07_inspect_sass.sh' script.
+```text
+[Host] GPU: NVIDIA GeForce RTX 5090
+[Host] Compute Capability: 12.0  sm_120
+[Host] UnifiedAddressing: yes
+[Device] mapped host read: 999  expected 999
+[Host] mapped read: PASS
+[Host] force_local_memory_spill: regs=... localSizeBytes=...
+[Host] spill: PASS  localSizeBytes > 0
 ```
 
-#### SASS 分析工具
-
-项目提供了 `07_inspect_sass.sh` 脚本，用于分析 SASS 代码中的内存访问模式：
-
-```bash
-cd examples/01_cuda_basics
-bash 07_inspect_sass.sh
-```
-
-**注意**：脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）。
-
-该脚本可以：
-- **检测 Local Memory Spilling**：搜索 `STL`/`LDL` 指令，验证寄存器溢出
-- **对比 `__restrict__` 优化**：列出相关函数，便于手动对比 SASS 代码差异
-- **验证内存访问模式**：识别向量化加载和 Texture Cache 使用
-```shell
-========================================================
-   SASS Analysis: Local Memory Spilling
-========================================================
-Searching for Local Store (STL) and Local Load (LDL) instructions...
-These indicate data is spilling to HBM (Slow!).
-
-                                                                                      /* 0x000fc40000000028 */
-        /*00c0*/                   FFMA R9, R3.reuse, R40.reuse, 5 ;                  /* 0x40a0000003097423 */
-                                                                                      /* 0x0c0fe40000000028 */
-        /*00d0*/                   FFMA R8, R3.reuse, R40.reuse, 4 ;                  /* 0x4080000003087423 */
-                                                                                      /* 0x0c0fe20000000028 */
-        /*00e0*/                   STL.128 [R1], R4 ;                                 /* 0x0000000401007387 */
---
-                                                                                      /* 0x0c0fe40000000028 */
-        /*0110*/                   FFMA R13, R3.reuse, R40.reuse, 9 ;                 /* 0x41100000030d7423 */
-                                                                                      /* 0x0c0fe40000000028 */
-        /*0120*/                   FFMA R12, R3.reuse, R40.reuse, 8 ;                 /* 0x41000000030c7423 */
-                                                                                      /* 0x0c0fe20000000028 */
-        /*0130*/                   STL.128 [R1+0x10], R8 ;                            /* 0x0000100801007387 */
---
-                                                                                      /* 0x0c0fe40000000028 */
-        /*0160*/                   FFMA R29, R3.reuse, R40.reuse, 37 ;                /* 0x42140000031d7423 */
-                                                                                      /* 0x0c0fe40000000028 */
-        /*0170*/                   FFMA R28, R3.reuse, R40.reuse, 36 ;                /* 0x42100000031c7423 */
-                                                                                      /* 0x0c0fe20000000028 */
-        /*0180*/                   STL.128 [R1+0x20], R12 ;                           /* 0x0000200c01007387 */
-
-NOTE: If you see STL/LDL inside 'force_local_memory_spill', spilling occurred.
-========================================================
-
-========================================================
-   SASS Analysis: __restrict__ Optimization
-========================================================
-Comparing No-Restrict vs With-Restrict kernels...
-Ideally, 'With-Restrict' might use LDG.NC (Non-coherent/Texture) or fewer instructions.
-
-[Functions found in binary]
-                Function : _Z17add_with_restrictPfS_S_i
-                Function : _Z15add_no_restrictPfS_S_i
-
-Tip: Use 'cuobjdump -sass ... > out.txt' to manually compare the assembly.
-========================================================
-```
-#### 注意事项
-
-- UVA Zero-Copy 适合小数据量或随机访问模式，大数据量传输应使用 `cudaMemcpy`
-- Local Memory Spilling 是性能杀手，应尽量避免：
-  - 减少局部数组大小
-  - 使用 Shared Memory 替代大局部数组
-  - 避免对局部数组使用动态索引
-- `__restrict__` 是性能优化的重要工具，但需要确保指针确实不重叠
+SASS 可选：Linux `07_inspect_sass.sh`；Windows 用 `cuobjdump -sass ... | findstr LDL`。
 
 ---
 

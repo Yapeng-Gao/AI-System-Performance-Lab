@@ -4,6 +4,7 @@
 
 | 文件 | 状态 | 说明 |
 |---|---|---|
+| [A-07_memory_spaces.md](A-07_memory_spaces.md) | ✅ | Module A：空间 / UVA / mapped；正文+示例已落地 |
 | [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；**新章样板**（对照审稿） |
 | [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板**（对照审稿） |
 | [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板**（含 RTX 5090 实测） |
@@ -18,5 +19,5 @@
 | [Module-E.md](Module-E.md) | ⏳ | DL 工程集成（远期） |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
-**约定**：新章大纲新建 `B-0N_<topic>.md`（或 `C-0N_*.md`），在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  
+**约定**：新章大纲新建 `A-0N_*` / `B-0N_*` / `C-0N_*.md`，在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  
 **已落地章**：权威以正文 + `docs/results/` 为准；样板优先看 B-07～B-09，其余可进 `archive/`。

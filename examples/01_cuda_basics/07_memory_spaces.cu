@@ -1,15 +1,15 @@
 /**
- * [Module A] 07. 内存模型全景
- * 验证目标：
- * 1. 地址空间探测 (Address Space Probing)
- * 2. UVA Zero-Copy 实战 (Host Pinned Memory direct access)
- * 3. 制造 Local Memory Spilling (缓存污染源)
- * 4. __restrict__ 对编译生成代码的影响
+ * [Module A] 07. Memory spaces + UVA
+ *
+ * A: print pointers (global / __device__ / shared / address-taken local / mapped host)
+ *    and read one mapped int (PASS). Address-taken locals go to Local, not on-chip SRAM.
+ * B: force spill; print cudaFuncGetAttributes.localSizeBytes (must be > 0).
+ * D: compile two add kernels (with/without __restrict__). Contract demo, not a speedup.
+ * C (mapped vs device event): not in this binary — bandwidth is B-06.
+ * Not CUDA event kernel time (A-08). Spill prescriptions: B-03. UM: B-05.
  */
 
-#include <iostream>
 #include <cstdio>
-#include <vector>
 #include <cuda_runtime.h>
 
 #define CUDA_CHECK(call) \
@@ -22,130 +22,133 @@
         } \
     } while (0)
 
-// 声明一个 Device 全局变量用于地址测试
 __device__ int g_device_var = 42;
 
-// ==========================================
-// Part 1: 地址空间探测 Kernel
-// ==========================================
-__global__ void address_space_probe(int* d_ptr, int* h_pinned_ptr) {
-    // 声明 Shared Memory
+__global__ void address_space_probe(int* d_ptr, int* h_mapped_ptr, int* d_flag) {
     __shared__ int s_var;
-    // 声明 Local Variable (通常在寄存器，但也可能在 Local Memory)
     int l_var = 10;
 
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        printf("\n[Device] === Memory Address Map ===\n");
-        printf("  Global Memory (HBM) Ptr:    %p\n", d_ptr);
-        printf("  Global Variable (Static):   %p\n", &g_device_var);
-        printf("  Shared Memory (SRAM):       %p (Small offset usually)\n", &s_var);
-        printf("  Local Variable (Stack):     %p (If address taken -> Local Mem)\n", &l_var);
-        printf("  Host Pinned Ptr (UVA/PCIe): %p\n", h_pinned_ptr);
-        printf("================================\n\n");
+        s_var = 1;
+        printf("[Device] === address map (VA, not a wiring diagram) ===\n");
+        printf("  cudaMalloc global:     %p\n", static_cast<void*>(d_ptr));
+        printf("  __device__ global:     %p\n", static_cast<void*>(&g_device_var));
+        printf("  __shared__:            %p\n", static_cast<void*>(&s_var));
+        printf("  address-taken local:   %p  (compiler puts this in Local / HBM)\n",
+               static_cast<void*>(&l_var));
+        printf("  mapped host ptr:       %p\n", static_cast<void*>(h_mapped_ptr));
 
-        // 测试 UVA Zero-Copy: 直接在 GPU 读取 CPU 内存
-        // 如果没有 UVA，这里会 Segfault
-        int val = *h_pinned_ptr;
-        printf("[Device] Read from Host Pinned Memory: %d (Success! UVA works)\n", val);
+        const int val = *h_mapped_ptr;
+        const int ok = (val == 999) ? 1 : 0;
+        *d_flag = ok;
+        printf("[Device] mapped host read: %d  expected 999\n", val);
     }
 }
 
-// ==========================================
-// Part 2: 制造 Register Spilling (Local Memory)
-// ==========================================
-// 我们定义一个巨大的数组，且动态索引，强迫编译器将其放入 Local Memory (HBM)
-// 并在 SASS 中生成 LDL/STL 指令
-__global__ void force_local_memory_spill(float* out, int n) {
-    int tid = threadIdx.x;
-
-    // 巨大的局部数组，寄存器放不下 -> 溢出到 Local Memory
-    float local_buffer[100];
-
-    // 初始化 (防止被优化掉)
-    #pragma unroll
-    for (int i = 0; i < 100; ++i) {
-        local_buffer[i] = tid * 0.01f + i;
+__global__ void force_local_memory_spill(float* out, int n, int salt) {
+    const int tid = static_cast<int>(threadIdx.x);
+    float local_buffer[256];
+    for (int i = 0; i < 256; ++i) {
+        local_buffer[i] = static_cast<float>(tid + i + salt);
     }
-
-    // 动态索引访问 (编译器无法优化为寄存器别名)
-    // 这里的读写将极其缓慢，并污染 L1 Cache
-    for (int i = 0; i < 100; ++i) {
-        int idx = (tid + i) % 100;
-        local_buffer[idx] += 1.0f;
+    float acc = 0.0f;
+    for (int i = 0; i < 256; ++i) {
+        const int idx = (tid + i + salt) & 255;
+        acc += local_buffer[idx];
+        local_buffer[idx] = acc;
     }
-
-    out[tid] = local_buffer[0];
+    if (tid < n) {
+        out[tid] = acc;
+    }
 }
 
-// ==========================================
-// Part 3: __restrict__ 优化测试
-// ==========================================
-
-// Case A: 无 restrict (编译器必须保守，假设 a, b, c 可能重叠)
 __global__ void add_no_restrict(float* a, float* b, float* c, int n) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    const int idx = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
     if (idx < n) {
-        // 编译器很难生成 LDG.128 (vectorized load)，因为怕 a[i] 修改了 b[i+1]
         c[idx] = a[idx] + b[idx];
     }
 }
 
-// Case B: 有 restrict (编译器大胆优化)
-// 可能生成 LDG.NC (Texture Cache) 或 LDG.128 (Vectorized)
 __global__ void add_with_restrict(float* __restrict__ a,
                                   float* __restrict__ b,
-                                  float* __restrict__ c, int n) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+                                  float* __restrict__ c,
+                                  int n) {
+    const int idx = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
     if (idx < n) {
         c[idx] = a[idx] + b[idx];
     }
 }
 
 int main() {
-    printf("[Host] Starting Memory Hierarchy Analysis...\n");
+    cudaDeviceProp prop{};
+    CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    int uva = 0;
+    CUDA_CHECK(cudaDeviceGetAttribute(&uva, cudaDevAttrUnifiedAddressing, 0));
+    printf("[Host] GPU: %s\n", prop.name);
+    printf("[Host] Compute Capability: %d.%d  sm_%d%d\n",
+           prop.major, prop.minor, prop.major, prop.minor);
+    printf("[Host] UnifiedAddressing: %s\n", uva ? "yes" : "no");
+    printf("[Host] Not CUDA event kernel time (see A-08).\n");
+    printf("[Host] Mapped throughput is B-06; UM fault/prefetch is B-05.\n\n");
 
-    // --- 1. 准备 UVA 环境 ---
-    int* d_ptr;
+    int* d_ptr = nullptr;
     CUDA_CHECK(cudaMalloc(&d_ptr, sizeof(int)));
+    CUDA_CHECK(cudaMemset(d_ptr, 0, sizeof(int)));
 
-    int* h_pinned_ptr;
-    // cudaHostAllocMapped: 允许 Device 访问此 Host 内存
-    CUDA_CHECK(cudaHostAlloc(&h_pinned_ptr, sizeof(int), cudaHostAllocMapped));
-    *h_pinned_ptr = 999; // CPU 写入
+    int* h_mapped = nullptr;
+    CUDA_CHECK(cudaHostAlloc(&h_mapped, sizeof(int), cudaHostAllocMapped));
+    *h_mapped = 999;
 
-    // --- 2. 启动地址探测 Kernel ---
-    printf("[Host] Launching Address Probe...\n");
-    address_space_probe<<<1, 1>>>(d_ptr, h_pinned_ptr);
+    int* d_flag = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_flag, sizeof(int)));
+    CUDA_CHECK(cudaMemset(d_flag, 0, sizeof(int)));
+
+    address_space_probe<<<1, 1>>>(d_ptr, h_mapped, d_flag);
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    // --- 3. 验证 Zero-Copy 性能差异 (简单演示) ---
-    // Zero-Copy 走 PCIe (64GB/s)，Global Memory 走 HBM (2000GB/s)
-    // 在大量随机访问下，Pinned Memory 会显著慢于 Device Memory
-    printf("\n[Host] To see Local Memory Spilling instructions (LDL/STL),\n"
-           "       please run the accompanying '07_inspect_sass.sh' script.\n");
+    int h_flag = 0;
+    CUDA_CHECK(cudaMemcpy(&h_flag, d_flag, sizeof(int), cudaMemcpyDeviceToHost));
+    printf("[Host] mapped read: %s\n\n", h_flag ? "PASS" : "FAIL");
+    if (!h_flag) {
+        fprintf(stderr, "[Host] mapped host pointer was not readable from the kernel.\n");
+        return 1;
+    }
 
-    // 触发 Spilling Kernel 编译
-    float* d_out;
+    float* d_out = nullptr;
     CUDA_CHECK(cudaMalloc(&d_out, 256 * sizeof(float)));
-    force_local_memory_spill<<<1, 256>>>(d_out, 256);
-
-    // 触发 Restrict Kernel 编译
-    float *da, *db, *dc;
-    CUDA_CHECK(cudaMalloc(&da, 1024*sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&db, 1024*sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&dc, 1024*sizeof(float)));
-    add_no_restrict<<<1, 256>>>(da, db, dc, 1024);
-    add_with_restrict<<<1, 256>>>(da, db, dc, 1024);
-
+    force_local_memory_spill<<<1, 256>>>(d_out, 256, 7);
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    // 清理
+    cudaFuncAttributes attr{};
+    CUDA_CHECK(cudaFuncGetAttributes(&attr, reinterpret_cast<const void*>(force_local_memory_spill)));
+    printf("[Host] force_local_memory_spill: regs=%d localSizeBytes=%zu\n",
+           attr.numRegs, attr.localSizeBytes);
+    if (attr.localSizeBytes == 0) {
+        fprintf(stderr,
+                "[Host] FAIL: expected localSizeBytes > 0 (array should spill to Local/HBM).\n");
+        return 1;
+    }
+    printf("[Host] spill: PASS  localSizeBytes > 0  (Local is thread-private, physically HBM)\n");
+    printf("[Host] SASS: cuobjdump -sass <bin>  then grep/findstr LDL STL\n");
+    printf("[Host] How to unspill: B-03. Not this chapter.\n\n");
+
+    const int n = 256;
+    float *da = nullptr, *db = nullptr, *dc = nullptr;
+    CUDA_CHECK(cudaMalloc(&da, n * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&db, n * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&dc, n * sizeof(float)));
+    add_no_restrict<<<1, n>>>(da, db, dc, n);
+    add_with_restrict<<<1, n>>>(da, db, dc, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+    printf("[Host] restrict kernels ran (aliasing contract). Not a speedup bill.\n");
+    printf("[Host] Do not treat LDG.NC / LDG.128 as guaranteed SASS.\n");
+
     CUDA_CHECK(cudaFree(d_ptr));
-    CUDA_CHECK(cudaFreeHost(h_pinned_ptr)); // 注意用 FreeHost
+    CUDA_CHECK(cudaFree(d_flag));
     CUDA_CHECK(cudaFree(d_out));
     CUDA_CHECK(cudaFree(da));
     CUDA_CHECK(cudaFree(db));
     CUDA_CHECK(cudaFree(dc));
-
+    CUDA_CHECK(cudaFreeHost(h_mapped));
     return 0;
 }

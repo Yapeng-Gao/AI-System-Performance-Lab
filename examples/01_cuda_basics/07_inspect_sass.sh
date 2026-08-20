@@ -42,7 +42,7 @@ echo "========================================================"
 echo "   SASS Analysis: Local Memory Spilling"
 echo "========================================================"
 echo "Searching for Local Store (STL) and Local Load (LDL) instructions..."
-echo "These indicate data is spilling to HBM (Slow!)."
+echo "These indicate Local/HBM spill. Unspill is B-03."
 echo ""
 
 # 查找 STL/LDL 指令，并显示所属的函数名
@@ -50,21 +50,19 @@ echo ""
 cuobjdump -sass "$TARGET_BIN" | grep -E "STL|LDL" -B 5 | head -n 20
 
 echo ""
-echo "NOTE: If you see STL/LDL inside 'force_local_memory_spill', spilling occurred."
+echo "NOTE: LDL/STL inside force_local_memory_spill means Local/HBM spill. Unspill is B-03."
 echo "========================================================"
 
 echo ""
 echo "========================================================"
-echo "   SASS Analysis: __restrict__ Optimization"
+echo "   SASS: __restrict__ kernels (contract, not a speedup)"
 echo "========================================================"
-echo "Comparing No-Restrict vs With-Restrict kernels..."
-echo "Ideally, 'With-Restrict' might use LDG.NC (Non-coherent/Texture) or fewer instructions."
+echo "Listing add_* functions. Do not treat LDG.NC / LDG.128 as guaranteed."
 echo ""
 
-# 简单列出两个函数的指令，人工对比（自动化对比比较复杂）
 echo "[Functions found in binary]"
 cuobjdump -sass "$TARGET_BIN" | grep "Function :" | grep "add_"
 
 echo ""
-echo "Tip: Use 'cuobjdump -sass ... > out.txt' to manually compare the assembly."
+echo "Tip: cuobjdump -sass ... > out.txt and compare by hand."
 echo "========================================================"
