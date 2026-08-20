@@ -118,9 +118,11 @@ int main() {
     cudaDeviceProp prop;
     CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
     printf("[Host] GPU: %s\n", prop.name);
-    printf("[Host] Compute Capability: %d.%d\n", prop.major, prop.minor);
+    printf("[Host] Compute Capability: %d.%d  sm_%d%d\n",
+           prop.major, prop.minor, prop.major, prop.minor);
     printf("[Host] Metric: lane0 clock64 median (warmup=%d, runs=%d, iters=%d)\n",
            kWarmup, kRuns, kIters);
+    printf("[Host] Grid: <<<1, 32>>> (one warp; ratios closer to textbook)\n");
     printf("[Host] Not CUDA event kernel time (see A-08).\n\n");
 
     long long* d_duration = nullptr;

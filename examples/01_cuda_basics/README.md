@@ -243,8 +243,9 @@ Detected 1 CUDA Capable Device(s)
 
 ```text
 [Host] GPU: NVIDIA GeForce RTX 5090
-[Host] Compute Capability: 12.0
+[Host] Compute Capability: 12.0  sm_120
 [Host] Metric: lane0 clock64 median (warmup=5, runs=21, iters=4096)
+[Host] Grid: <<<1, 32>>> (one warp; ratios closer to textbook)
 [Host] Not CUDA event kernel time (see A-08).
 
 [Divergence] uniform cycles : ...
