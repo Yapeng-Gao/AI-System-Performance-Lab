@@ -13,7 +13,7 @@
 | **第 5 章** | `05_kernel_structure.cu` | Kernel 结构与 ABI | 同一份头对 offsetof；`c[0]` / CALL；Occupancy API |
 | **第 6 章** | `06_nvrtc_jit.cpp` | nvcc / Fatbin / NVRTC | 本机 `compute_XY`；编译墙钟；verify 7.0 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存空间 / UVA | 地址图；mapped 读 PASS；`localSizeBytes > 0` |
-| **第 8 章** | `08_async_pipeline.cu` | 异步执行模型 | Pinned Memory、多 Stream 并发、Depth-First 调度、流水线 Overlap |
+| **第 8 章** | `08_async_pipeline.cu` | Stream / Event / 流水线 | A serial / B depth-first / C breadth-first；CUDA event median |
 | **第 9 章** | `09_debug_and_sanitizer.cu` | 调试与错误诊断 | Compute Sanitizer、内存越界检测、数据竞争检测、非法同步检测 |
 | **第 10 章** | `10_roofline_demo.cu` | 性能建模第一性原理 | Roofline 模型、带宽极限测试、算力极限测试、Arithmetic Intensity |
 
@@ -346,101 +346,45 @@ SASS 可选：Linux `07_inspect_sass.sh`；Windows 用 `cuobjdump -sass ... | fi
 
 ---
 
-### 第 8 章：异步执行模型 (`08_async_pipeline.cu`)
+### 第 8 章：Stream / Event / 流水线 (`08_async_pipeline.cu`)
 
-**Pipeline Concurrency**：实现 H2D -> Compute -> D2H 三级流水线，最大化 GPU 利用率。
+**口径**：CUDA event median（warmup=2, runs=7）包整段 device 工作；`NonBlocking` 流在 record `stop` 前 `cudaDeviceSynchronize`。`clock64` busy-wait 只为让 overlap 可见，不是真实 AI。Pinned GB/s → B-06。
 
-#### 核心知识点
+#### Mode
 
-1. **Pinned Memory（页锁定内存）的必要性**：
-   - 使用 `cudaMallocHost` 分配 Pinned Memory，允许 DMA 引擎直接访问
-   - Pageable Memory（普通 `malloc`）会导致驱动介入进行临时拷贝，无法实现真正的异步传输
-   - Pinned Memory 是异步传输的前提条件
+| Mode | 配置 |
+|------|------|
+| A | pageable + default stream 0 |
+| B | pinned + 4× `cudaStreamNonBlocking` + **depth-first**（每 chunk：H2D→K→D2H） |
+| C | 同 B 资源，**breadth-first**（先全部 H2D，再全部 K，再全部 D2H） |
 
-2. **多 Stream 并发**：
-   - 创建多个 CUDA Stream（使用 `cudaStreamCreateWithFlags` 和 `cudaStreamNonBlocking`）
-   - 不同 Stream 中的操作可以并发执行，掩盖 PCIe 传输延迟
-   - 理想情况下，当 Stream 0 在执行计算时，Stream 1 可以在进行数据传输
-
-3. **Depth-First 调度策略**：
-   - 按 Chunk 顺序循环分配 Stream（`stream_idx = i % n_streams`）
-   - 每个 Stream 依次执行：H2D Copy -> Compute -> D2H Copy
-   - 这种模式能最大化 Overlap：当 Stream 0 在计算时，Stream 1 在拷贝
-
-4. **流水线 Overlap 验证**：
-   - 对比串行模式（Pageable Memory + Default Stream）vs 异步流水线模式（Pinned Memory + Multi-Streams）
-   - 使用 Nsight Systems 可视化时间线，观察 Copy 和 Compute 的重叠
-   - 理想情况下，异步流水线能显著提升吞吐量
-
-#### 预期输出
+#### 预期输出（RTX 5090 / `sm_120` 参考）
 
 ```
 GPU: NVIDIA GeForce RTX 5090
-Data Size: 32.00 MB, Chunk Size: 1.00 MB
+sm_120  asyncEngineCount=2
+Metric: CUDA event median (warmup=2, runs=7); not Host chrono
+...
 
-[Serial] Starting processing 32 chunks...
-[Serial] Total Time: 40.20 ms
-------------------------------------------------
-[Pipeline] Starting processing 32 chunks with 4 streams...
-[Pipeline] Total Time: 1.32 ms
+mode,median_ms
+A_serial_pageable_default,11.825
+B_depth_first_pinned,1.408
+C_breadth_first_pinned,1.835
+
+ratio A/B (serial / depth-first): 8.40x
+ratio C/B (breadth / depth-first): 1.30x
 ```
 
-#### 性能分析工具
+本机形状：`A/B ≈ 8.40×`，`C/B ≈ 1.30×`。不报 PCIe GB/s（B-06）。
 
-项目提供了 `08_profile_nsys.sh` 脚本，使用 Nsight Systems 进行性能分析：
+#### 可选旁证
 
 ```bash
 cd examples/01_cuda_basics
 bash 08_profile_nsys.sh
 ```
 
-**注意**：
-- 脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）
-- **仅支持 Linux/WSL 环境**（Nsight Systems 需要 Linux 环境）
-- 脚本会生成 `.nsys-rep` 文件，需要在 Nsight Systems GUI 中打开
-
-该脚本可以：
-- **追踪 CUDA API 调用**：记录所有 `cudaMemcpyAsync` 和 Kernel Launch
-- **可视化时间线**：在 Nsight Systems GUI 中查看 Copy 和 Compute 的重叠情况
-- **验证 Overlap 效果**：观察 "CUDA HW" 行中的并发执行情况
-```shell
-========================================================
-   Profiling with Nsight Systems (nsys)
-========================================================
-Tracing CUDA API and GPU Workload...
-
-Collecting data...
-GPU: NVIDIA GeForce RTX 5090
-Data Size: 32.00 MB, Chunk Size: 1.00 MB
-
-[Serial] Starting processing 32 chunks...
-[Serial] Total Time: 14.20 ms
-------------------------------------------------
-[Pipeline] Starting processing 32 chunks with 4 streams...
-[Pipeline] Total Time: 1.41 ms
-Generating '/tmp/nsys-report-c086.qdstrm'
-[1/1] [========================100%] pipeline_trace.nsys-rep
-Generated:
-        /data/AI-System-Performance-Lab/build/pipeline_trace.nsys-rep
-
-========================================================
-Done! Please open 'pipeline_trace.nsys-rep' in Nsight Systems GUI.
-Look for the 'CUDA HW' row to see the overlap.
-========================================================
-```
-#### 技术细节
-
-- **异步传输**：`cudaMemcpyAsync` 需要 Pinned Memory 才能实现真正的异步
-- **Stream 同步**：使用 `cudaDeviceSynchronize()` 等待所有 Stream 完成
-- **计算负载模拟**：使用 `clock64()` 进行忙等待，模拟重计算任务
-- **Chunk 大小调优**：切得太小会导致 Launch Overhead 占比过高，切得太大 Overlap 效果差
-
-#### 注意事项
-
-- Pinned Memory 分配会占用系统内存，不要过度使用
-- Stream 数量需要根据硬件能力调整（通常 4-8 个 Stream 效果较好）
-- 理想的 Overlap 是 Compute Time ≈ Copy Time，需要根据实际负载调整 `KERNEL_LOAD` 参数
-- Windows 环境下无法直接运行 `nsys`，需要在 WSL 或 Linux 环境中使用
+Linux/WSL；看 NSYS 时间轴 copy∥kernel。不进 TL;DR 数字。
 
 ---
 
