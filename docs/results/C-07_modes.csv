@@ -1,0 +1,4 @@
+tag,n_tasks,work,grid,median_ms
+launch,4096,1,1,12.4248
+persistent,4096,1,1020,0.0079
+oversub,4096,1,8160,0.0117

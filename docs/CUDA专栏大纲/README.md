@@ -33,6 +33,7 @@
 | [C-04_sync_layers.md](C-04_sync_layers.md) | ✅ | 正文+示例+5090 实测 |
 | [C-05_kernel_fusion.md](C-05_kernel_fusion.md) | ✅ | 正文+示例+5090 实测 |
 | [C-06_cuda_graph.md](C-06_cuda_graph.md) | ✅ | 正文+示例+5090 实测 |
+| [C-07_persistent.md](C-07_persistent.md) | ✅ | Persistent；5090 sweep 32×→3740×，work=4096→314× |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
 **约定**：新章大纲新建 `A-0N_*` / `B-0N_*` / `C-0N_*.md`，在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  
