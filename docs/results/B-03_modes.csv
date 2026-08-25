@@ -1,0 +1,4 @@
+mode,median_ms,speedup_vs_baseline,num_regs,local_bytes,occ_blocks
+baseline,4.555040,1.0000,19,128,6
+highreg,14.795552,0.3079,19,1024,6
+launch_bounds,14.899680,0.3057,19,1024,6

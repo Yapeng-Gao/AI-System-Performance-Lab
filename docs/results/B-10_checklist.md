@@ -13,6 +13,8 @@
 |---|---|---|
 | B-01 | 5090：`misaligned` 0.988× / `float4` 1.038×（相对 aligned；offset=1 近贴齐） | [B-01_global_mem.md](B-01_global_mem.md) |
 | B-02 | 5090 列扫：padding 14.12× / swizzle 12.41×（相对 naive） | [B-02_shared_mem.md](B-02_shared_mem.md) |
+| B-03 | 5090：highreg 0.308×；regs/occ 三档相同，localB 128→1024 | [B-03_register.md](B-03_register.md) |
+| B-04 | 5090：persist 0.999× / thrash 1.001× vs mixed；streaming 19.58× 是合并 | [B-04_l2.md](B-04_l2.md) |
 | B-06 | pinned 单向 ~52 GB/s；overlap 贴 pinned | [B-06_pinned_dma_rtx5090.md](B-06_pinned_dma_rtx5090.md) |
 | B-07 | 极低 AI `pipe2` ~1.15–1.31×；高 AI → ≤1；`async1` 立刻 wait 可更慢 | [B-07_cp_async_pipeline.md](B-07_cp_async_pipeline.md) |
 | B-08 | 立刻 wait 的 TMA 常 ~0.86–1.05×；`pipe2` 低 AI 才明显赚（~1.69× @fma=1） | [B-08_tma.md](B-08_tma.md) |
@@ -27,8 +29,8 @@
 |---|---|---|---|---|
 | B-01 | `01_global_mem_bandwidth.cu` | `02_memory_optim_01_global_mem_bandwidth` | `--mode modes` | `B-01_*`；`plot_b01_global_mem.py` |
 | B-02 | `02_shared_mem_bank_conflict.cu` | `02_memory_optim_02_shared_mem_bank_conflict` | `--mode modes` | `B-02_*`；`plot_b02_shared_mem.py` |
-| B-03 | `03_register_spill.cu` | `02_memory_optim_03_register_spill` | 章内 + `-Xptxas=-v` | 正文 |
-| B-04 | `04_l2_residency.cu` | `02_memory_optim_04_l2_residency` | 章内 mode | 正文 |
+| B-03 | `03_register_spill.cu` | `02_memory_optim_03_register_spill` | `--mode modes` | `B-03_*`；`plot_b03_register.py` |
+| B-04 | `04_l2_residency.cu` | `02_memory_optim_04_l2_residency` | `--mode modes` | `B-04_*`；`plot_b04_l2.py` |
 | B-05 | `05_unified_memory_pf.cu` | `02_memory_optim_05_unified_memory_pf` | profile：`05_profile_unified_memory.sh` | `B-05_*`；`plot_b05_unified_memory.py` |
 | B-06 | `06_pinned_dma.cu` | `02_memory_optim_06_pinned_dma` | `modes` / overlap | `B-06_*`；`plot_b06_pinned_dma.py` |
 | B-07 | `07_cp_async_pipeline.cu` | `02_memory_optim_07_cp_async_pipeline` | `--mode sweep` | `B-07_*`；`plot_b07_cp_async.py` |

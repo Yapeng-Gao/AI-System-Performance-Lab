@@ -172,8 +172,8 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 |---|---|---|---|
 | 11 / B-01 | 形状 | GMEM：合并 / 对齐 / float4 | ✅ |
 | 12 / B-02 | on-chip | SMEM：Bank / Padding / Swizzle | ✅ |
-| 13 / B-03 | on-chip | 寄存器 / Spilling / Occupancy | 🟡 |
-| 14 / B-04 | on-chip | L2 residency | 🟡 |
+| 13 / B-03 | on-chip | 寄存器 / Spilling / Occupancy | ✅ |
+| 14 / B-04 | on-chip | L2 residency | ✅ |
 | 15 / B-05 | 跨空间 | Unified Memory | ✅ |
 | 16 / B-06 | 跨空间 | Pinned / DMA overlap | ✅ |
 | 17 / B-07 | 引擎 | `cp.async` / pipeline | ✅ |
@@ -285,11 +285,11 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 | 模块 | 状态 | 说明 |
 |---|---|---|
 | A | ✅ | 导读 + A-01～A-10 已收束 |
-| B | 🟡 | B-01、B-02、B-05～B-10 ✅；B-03～B-04 按 §4.2 弧对齐 |
+| B | ✅ | B-01～B-10 已收口（B-04：hint ~1×，streaming 19.58× 是合并） |
 | C | 🟡 | C-01～C-06 ✅；C-07～C-09 候选；C-10 未开 |
 | D / E | ⏳ | 章表已锁；无代码目录 |
 
-**当前焦点（只一条主线）**：按弧对齐 on-chip，下一章 **B-03（寄存器 / spilling / occupancy）**。C 后半与 C-10 **不阻塞**。D/E 不开写。
+**当前焦点（只一条主线）**：Module B on-chip 已齐（B-02～B-04）；无强制下一章。C 后半与 C-10 **不阻塞**。D/E 不开写。
 
 ---
 

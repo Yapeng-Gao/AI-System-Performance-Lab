@@ -7,7 +7,7 @@
 | 文件 | 状态 | 教法弧 |
 |---|---|---|
 | [Module-A.md](Module-A.md) | ✅ | 模型 → … → Roofline |
-| [Module-B.md](Module-B.md) | 🟡 | 形状 → on-chip → 跨空间 → 引擎 → 布局 → 索引 |
+| [Module-B.md](Module-B.md) | ✅ | 形状 → on-chip → 跨空间 → 引擎 → 布局 → 索引 |
 | [Module-C.md](Module-C.md) | 🟡 | 通信 → 争用/同步 → 摊销 launch；（后半可裁） |
 | [Module-D.md](Module-D.md) | ⏳ | 规约族 → 矩阵 → epilogue |
 | [Module-E.md](Module-E.md) | ⏳ | 可调用 → 可测量 → 可交付 → 多卡钩子 |
@@ -22,6 +22,8 @@
 | [A-10_roofline.md](A-10_roofline.md) | ✅ | Module A：Roofline |
 | [B-01_global_mem.md](B-01_global_mem.md) | ✅ | 形状弧首章；5090 `0.988×` / `1.038×` |
 | [B-02_shared_mem.md](B-02_shared_mem.md) | ✅ | on-chip：Bank / Padding / Swizzle；5090 padding 14.12× / swizzle 12.41× |
+| [B-03_register.md](B-03_register.md) | ✅ | on-chip：local 足迹 0.308×；regs/occ 三档相同 |
+| [B-04_l2.md](B-04_l2.md) | ✅ | on-chip：persist 0.999× / thrash 1.001×；streaming 19.58× 是合并 |
 | [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；**新章样板** |
 | [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板** |
 | [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板** |

@@ -1,0 +1,6 @@
+mode,median_ms,speedup_vs_mixed
+streaming,15.414080,19.5796
+hot,302.931946,0.9963
+mixed,301.801300,1.0000
+persist,302.213745,0.9986
+thrash,301.622437,1.0006

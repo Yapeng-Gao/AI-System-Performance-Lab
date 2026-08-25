@@ -1,6 +1,6 @@
 # Module B 大纲：数据怎么搬（11–20）
 
-> 状态：🟡 工程索引对齐中（B-01、B-02、B-05～B-10 ✅；B-03～B-04 按弧对齐）。  
+> 状态：✅ B-01～B-10 已收口。  
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.2
 
 ## 模块目标
@@ -24,8 +24,8 @@
 |---|---|---|---|---|---|
 | 11 | B-01 | 形状 | GMEM：合并 / 对齐 / float4 | ✅ | [B-01](B-01_global_mem.md) |
 | 12 | B-02 | on-chip | SMEM：Bank / Padding / Swizzle | ✅ | [B-02](B-02_shared_mem.md) |
-| 13 | B-03 | on-chip | 寄存器 / Spilling / Occupancy | 🟡 | 待建 |
-| 14 | B-04 | on-chip | L2 residency | 🟡 | 待建 |
+| 13 | B-03 | on-chip | 寄存器 / Spilling / Occupancy | ✅ | [B-03](B-03_register.md) |
+| 14 | B-04 | on-chip | L2 residency | ✅ | [B-04](B-04_l2.md) |
 | 15 | B-05 | 跨空间 | Unified Memory | ✅ | — |
 | 16 | B-06 | 跨空间 | Pinned / DMA overlap | ✅ | [归档](archive/B-06_pinned_dma.md) |
 | 17 | B-07 | 引擎 | `cp.async` / pipeline | ✅ | [B-07](B-07_cp_async.md) |
@@ -50,6 +50,6 @@
 
 ## 开写交接
 
-- **已收口**：B-01（形状）、B-02（SMEM bank）。
-- **主线**：按弧对齐 on-chip，下一章 **B-03**。
+- **已收口**：B-01～B-10（on-chip 含 B-04：5090 hint ~1×）。
+- **主线**：无强制下一章。C 后半不阻塞。
 - **C 后半**：不阻塞本弧。

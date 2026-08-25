@@ -3,7 +3,7 @@
 本目录是专栏 Module B 的配套实验代码。正文在 `article/02_memory_optim/`。  
 仓库整体目录用途见 [`docs/仓库架构与现状.md`](../../docs/仓库架构与现状.md)。
 
-**正文插图**：原理用短 ASCII；B-05～B-09 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
+**正文插图**：原理用短 ASCII；B-01～B-04、B-05～B-09 实测图由 `docs/results/*.csv` + `scripts/plot_b0N_*.py` 生成。
 
 ## 目录
 
@@ -11,8 +11,8 @@
 |------|------|----------|-------------|
 | **B-01** | `01_global_mem_bandwidth.cu` | 合并 / 对齐 / float4（`--mode modes`） | `docs/results/B-01_*`；`python scripts/plot_b01_global_mem.py` |
 | **B-02** | `02_shared_mem_bank_conflict.cu` | Bank / Padding / XOR（`--mode modes`） | `docs/results/B-02_*`；`python scripts/plot_b02_shared_mem.py` |
-| **B-03** | `03_register_spill.cu` | Register spill / Occupancy | — |
-| **B-04** | `04_l2_residency.cu` | L2 residency | — |
+| **B-03** | `03_register_spill.cu` | Spilling / Occupancy / launch_bounds（`--mode modes`） | `docs/results/B-03_*`；`python scripts/plot_b03_register.py` |
+| **B-04** | `04_l2_residency.cu` | L2 persisting / window / hitRatio（`--mode modes`） | `docs/results/B-04_*`；`python scripts/plot_b04_l2.py` |
 | **B-05** | `05_unified_memory_pf.cu` + `05_profile_*.sh` | UM fault/prefetch/advise | `docs/results/B-05_*`；`python scripts/plot_b05_unified_memory.py` |
 | **B-06** | `06_pinned_dma.cu` + `06_profile_*.sh` | Pinned / DMA / Overlap | `docs/results/B-06_*`；`python scripts/plot_b06_pinned_dma.py` |
 | **B-07** | `07_cp_async_pipeline.cu` + profile/dump 脚本 | 设备内 async pipeline | `docs/results/B-07_*`；`python scripts/plot_b07_cp_async.py` |
@@ -146,74 +146,72 @@ bash examples/02_memory_optim/02_profile_banks.sh
 
 ---
 
-### 第 13 章：Register Spilling 与 Occupancy (`03_register_spill.cu`)
+### 第 13 章 / B-03：寄存器（`03_register_spill.cu`）
 
-该示例用于构造寄存器压力并观察 spilling 对性能的影响，核心是对比三种变体：
+同一压力核三档对照（**不做** L2 / TMA / `cp.async`）。Occupancy 不是 KPI；`__launch_bounds__` 是驻留契约。
 
-- **A) baseline（REGS=32）**：寄存器压力较低
-- **B) high-reg（REGS=256）**：寄存器压力高，更容易触发 local spill
-- **C) launch_bounds（2 blocks/SM 提示）**：演示 occupancy 约束与寄存器分配的权衡
+| mode | 含义 |
+|------|------|
+| `baseline` | `REGS=32` 低压力对照 |
+| `highreg` | `REGS=256`，推 spill / 掉 occupancy |
+| `launch_bounds` | 同一 256 压力 + `__launch_bounds__(256, 2)` |
+| `modes` | **主结论**：三档 median + 相对 baseline 加速比 + regs/local/occ CSV |
 
 #### 运行示例
 
 ```bash
-# 默认参数
-./bin/02_memory_optim_03_register_spill
+# 主证据
+./bin/02_memory_optim_03_register_spill --mode modes
 
-# 自定义规模
-./bin/02_memory_optim_03_register_spill 1048576 256
+# 单 mode 调试
+./bin/02_memory_optim_03_register_spill --mode baseline
+./bin/02_memory_optim_03_register_spill --mode highreg
+./bin/02_memory_optim_03_register_spill --mode launch_bounds
+
+# CSV 有数据后重画
+python scripts/plot_b03_register.py
 ```
 
-#### 分析建议
+结果：`docs/results/B-03_register.md`、`B-03_modes.csv`。配套文章：`article/02_memory_optim/B-03. 寄存器：Spilling、Occupancy 与 launch_bounds.md`。
 
-- 编译时加 `-Xptxas=-v`，对比不同变体的 `reg / spill loads / spill stores`
-- 运行时对照 kernel 平均时间，结合编译日志判断是否出现“寄存器不够 -> spill -> 性能下降”
-- 关注 `launch_bounds` 的双刃剑效应：它是资源契约，不保证一定更快
+口径：CUDA event **median**；加速比 = `baseline_median / mode_median`。同一次运行打印 `numRegs` / `localSizeBytes` / `occ_blocks`。可选旁证：编译加 `-Xptxas=-v`。
+
+**RTX 5090 参考**：`highreg` **0.308×**；三档 `regs=19`、`occ=6`；`localB` 128→1024。墙钟跟 local 走，不是 occupancy 台阶。
 
 ---
 
-### 第 14 章 / B-04：L2 Residency 控制 (`04_l2_residency.cu`)
+### 第 14 章 / B-04：L2（`04_l2_residency.cu`）
 
-该示例用最小 micro-bench 复现五类场景（其中 C0/C1 是同 workload 的公平对照）：
+同一 mixed 核上对照 policy off / persist / thrash（**不做** TMA / `cp.async` / UM）。需要 **sm_80+** 且 `persistingL2CacheMaxSize>0`。
 
-- **A) Streaming（policy off）**：一次性数据流式访问，通常对 residency 不敏感
-- **B) Hot Reuse（policy off）**：存在可复用热点，L2 命中提升更明显
-- **C0) Mixed baseline（policy off）**：与 C1 完全同一 workload，用于公平对照
-- **C1) Mixed + Residency（policy on）**：`set-aside + window + hitRatio` 的可控配置
-- **D) Thrashing（policy on）**：`window >> set-aside` 且 `hitRatio=1.0` 的典型翻车配置
+| mode | 含义 |
+|------|------|
+| `streaming` | 扫过大数组，policy off |
+| `hot` | 小工作集反复读，policy off |
+| `mixed` | 热/冷混合，policy off（公平基线） |
+| `persist` | 同一 mixed + set-aside + window + hitRatio |
+| `thrash` | 同窗 `hitRatio=1.0` |
+| `modes` | **主结论**：五档 median + 相对 mixed 加速比 + CSV |
 
 #### 运行示例
 
 ```bash
-# 位置参数（兼容旧用法）
-./bin/02_memory_optim_04_l2_residency 64 2048 8 32 0.25
+# 主证据
+./bin/02_memory_optim_04_l2_residency --mode modes
 
-# 命名参数（推荐）
-./bin/02_memory_optim_04_l2_residency --data-mb 64 --iters 2048 --set-aside-mb 8 --window-mb 32 --hit-ratio 0.25
+# 单 mode 调试（会先跑 mixed 作对照）
+./bin/02_memory_optim_04_l2_residency --mode persist
+./bin/02_memory_optim_04_l2_residency --mode thrash
 
-# 固定 seed + 仅输出 CSV（适合批量扫参）
-./bin/02_memory_optim_04_l2_residency --data-mb 64 --iters 2048 --set-aside-mb 8 --window-mb 32 --hit-ratio 0.25 --seed 12345 --csv-only
-
-# 固定 workload + 多次运行统计（推荐用于判断 C1 vs C0）
-./bin/02_memory_optim_04_l2_residency --data-mb 32 --iters 4096 --set-aside-mb 24 --window-mb 16 --hit-ratio 1.0 --hot-ratio 0.25 --runs 7 --seed 12345
+# 有 CSV 后重画
+python scripts/plot_b04_l2.py
 ```
 
-#### 参数说明
+结果：`docs/results/B-04_l2.md`、`B-04_modes.csv`。配套文章：`article/02_memory_optim/B-04*.md`。
 
-- `--data-mb`：输入数据规模（MB）
-- `--iters`：循环次数（放大时延差异）
-- `--set-aside-mb`：L2 persisting 预留大小
-- `--window-mb`：policy window 大小（会自动截断到设备上限）
-- `--hit-ratio`：`[0,1]`，用于描述窗口内“值得持久化”的比例
-- `--hot-ratio`：`[0,1]`，用于控制 mixed workload 热点子集比例（与 policy hint 解耦）
-- `--runs`：重复运行次数（输出 median/mean，建议 `5~11`）
-- `--seed`：控制 mixed workload 的伪随机访问序列，便于复现实验
-- `--csv-only`：仅输出一行 CSV，方便脚本采集结果
+口径：CUDA event **median**；加速比 = `mixed_median / mode_median`。默认 `data-mb=64`、`iters=2048`、`set-aside-mb=8`、`window-mb=32`、`hit-ratio=0.25`。跑完 reset。
 
-#### 输出口径
-
-程序会输出 A/B/C0/C1/D 五组时间统计（median + mean），并提供一行 `CSV,time_ms,...` 便于汇总。  
-建议配合 Nsight Compute 额外采集 `time + DRAM bytes + L2 hit` 三件套，形成完整证据链。
+**RTX 5090 参考**：`persist` **0.999×** / `thrash` **1.001×** vs `mixed`；`streaming` **19.58×**（合并扫，不是 residency）。L2=96 MB，32 MB 窗口已装得下。
 
 ---
 
