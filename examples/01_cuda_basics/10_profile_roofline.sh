@@ -1,4 +1,6 @@
 #!/bin/bash
+# Optional NCU旁证（A-10）。主结论以裸跑 event median 为准；
+# 不要把 ncu 附着时程序自打印的 ms/GB/s/TFLOPS 当屋顶。
 
 # 自动检测构建目录（支持 Windows/CLion 和 Linux 标准构建）
 # Windows/CLion: cmake-build-debug 或 cmake-build-debug-visual-studio

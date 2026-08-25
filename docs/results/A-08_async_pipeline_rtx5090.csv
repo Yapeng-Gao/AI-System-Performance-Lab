@@ -1,0 +1,4 @@
+mode,label,median_ms
+A_serial_pageable_default,A serial,11.825
+B_depth_first_pinned,B depth-first,1.408
+C_breadth_first_pinned,C breadth-first,1.835

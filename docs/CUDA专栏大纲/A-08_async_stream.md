@@ -8,7 +8,7 @@
 > - 正文：`article/01_cuda_basic/A-08. 异步执行模型：Stream, Event 与流水线并发.md`（H1：Stream 与 Event：让拷贝和计算重叠）
 > - 示例：`examples/01_cuda_basics/08_async_pipeline.cu`（A/B/C 必做；D WaitEvent 仅正文）
 > - 图：`assets/A-08-async-stream-cover.png` + `A-08-fig1-issue-order.png` + `A-08-fig2-pipeline.png`
-> - **本机要点**：A 11.825 ms / B 1.408 ms / C 1.835 ms；`clock64` 人造负载；不报 GB/s
+> - **本机要点**：A 11.825 ms / B 1.408 ms / C 1.835 ms；图 `A-08-mode-median-bars.png`
 > - NSYS：`08_profile_nsys.sh` 可选旁证，不进 TL;DR
 >
 > **路线**：Module A 概念章。主证据 = serial vs depth-first vs breadth-first 的 **CUDA event median 形状**；不是 pinned GB/s（B-06）。

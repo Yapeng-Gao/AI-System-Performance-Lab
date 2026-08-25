@@ -4,16 +4,20 @@
 
 ## 已提供的脚本
 
-### 正文实测图（B-05～B-07，改 CSV 后重跑）
+### 正文实测图（Module A 补充；B-05～）
 
-| 脚本 | 输入 CSV | 输出 PNG（`article/02_memory_optim/assets/`） |
-|------|----------|-----------------------------------------------|
+| 脚本 | 输入 CSV | 输出 PNG |
+|------|----------|----------|
+| `plot_a08_async_pipeline.py` | `docs/results/A-08_async_pipeline_rtx5090.csv` | `article/01_cuda_basic/assets/A-08-mode-median-bars.png` |
+| `plot_a10_roofline.py` | `docs/results/A-10_roofline_rtx5090.csv` | `article/01_cuda_basic/assets/A-10-measured-roofline.png` |
 | `plot_b05_unified_memory.py` | `docs/results/B-05_modes_warm.csv`、`B-05_cold_fault.csv` | `B-05-mode-latency-bars.png`、`B-05-cold-vs-warm.png` |
 | `plot_b06_pinned_dma.py` | `docs/results/B-06_modes.csv`、`B-06_overlap.csv` | `B-06-mode-gbs-bars.png`、`B-06-overlap-median-bars.png` |
 | `plot_b07_cp_async.py` | `docs/results/B-07_sweep.csv`、`B-07_modes.csv` | `B-07-speedup-vs-fma.png`、`B-07-mode-speedup-bars.png` |
 
 ```bash
 # 仓库根目录；需 matplotlib
+python scripts/plot_a08_async_pipeline.py
+python scripts/plot_a10_roofline.py
 python scripts/plot_b05_unified_memory.py
 python scripts/plot_b06_pinned_dma.py
 python scripts/plot_b07_cp_async.py

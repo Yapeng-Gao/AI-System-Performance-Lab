@@ -47,7 +47,7 @@
 
 | 模块 | 范围 | 状态 | 大纲 |
 |---|---|---|---|
-| **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | 🟡 A-10 仍为旧稿 | A-01～A-09 ✅；[A-09 大纲](CUDA专栏大纲/A-09_sanitizer.md) |
+| **A** CUDA 基础与 GPU 架构 | 1–10 / A-01～A-10 | ✅ | [A-10 大纲](CUDA专栏大纲/A-10_roofline.md)；5090 ridge≈25 |
 | **B** 内存体系与访存优化 | 11–20 / B-01～B-10 | ✅ B-01～B-10 | [`CUDA专栏大纲/`](CUDA专栏大纲/README.md) |
 | **C** 核心编程技巧与并发原语 | 21–30 | 🟡 C-01～C-06 ✅ | [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md) |
 | **D** 计算原语与高级算子 | 31–40 | ⏳ | [`CUDA专栏大纲/Module-D.md`](CUDA专栏大纲/Module-D.md) |
@@ -71,7 +71,7 @@
 | 7 / A-07 | 内存模型全景：UVA / Memory Spaces | `article/01_cuda_basic/A-07*.md` ✅（[大纲](CUDA专栏大纲/A-07_memory_spaces.md)） | `examples/01_cuda_basics/07_memory_spaces.cu` ✅ |
 | 8 / A-08 | 异步执行：Stream / Event / Pipeline | `article/01_cuda_basic/A-08*.md` ✅（[大纲](CUDA专栏大纲/A-08_async_stream.md)） | `examples/01_cuda_basics/08_async_pipeline.cu` ✅ |
 | 9 / A-09 | 调试与错误诊断：Compute Sanitizer | `article/01_cuda_basic/A-09*.md` ✅（[大纲](CUDA专栏大纲/A-09_sanitizer.md)） | `examples/01_cuda_basics/09_debug_and_sanitizer.cu` ✅ |
-| 10 / A-10 | 性能建模：Roofline / SOL | `article/01_cuda_basic/A-10*.md` ✅ | `examples/01_cuda_basics/10_roofline_demo.cu` ✅ |
+| 10 / A-10 | 性能建模：Roofline / SOL | `article/01_cuda_basic/A-10*.md` ✅（[大纲](CUDA专栏大纲/A-10_roofline.md)） | `examples/01_cuda_basics/10_roofline_demo.cu` ✅ |
 
 示例组织：扁平单文件 `examples/<module>/<NN>_<topic>.cu`（配套脚本同目录）。
 
@@ -100,9 +100,9 @@
 
 ### 4.2 当前焦点
 
-1. **当前写作：下一章 A-10**（Roofline；A-09 三 tool 本机 PASS）
-2. **Module B 已收束**（B-10 Checklist：正文 + `docs/results/B-10_checklist.md`）
-3. **Module C**：C-01～C-06 ✅；其后 C-07/Checklist（[`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)）
+1. **Module A 已收束**（A-10：5090 BW≈1954 GB/s、FP32≈49 TFLOPS、ridge≈25）
+2. **Module B 已收束**（B-10 Checklist）
+3. **Module C**：C-01～C-06 ✅；其后见 [`CUDA专栏大纲/Module-C.md`](CUDA专栏大纲/Module-C.md)
 
 ### 4.3 工程索引型最低交付（新章）
 
