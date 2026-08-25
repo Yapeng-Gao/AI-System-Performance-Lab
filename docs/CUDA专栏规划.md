@@ -193,7 +193,7 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 | 篇章 | 主题 | 状态 |
 |---|---|---|
 | 21–26 / C-01～C-06 | Warp / CG / Atomics / Sync / Fusion / Graph | ✅ |
-| 27–29 / C-07～C-09 | Persistent · 设备侧重叠 · named barrier 等 | ✅ C-07 5090 已测（[大纲](CUDA专栏大纲/C-07_persistent.md)）；C-08～C-09 仍可裁 |
+| 27–29 / C-07～C-09 | Persistent · 设备侧重叠 · named barrier 等 | ✅ C-07 / C-08 已测（[C-08 大纲](CUDA专栏大纲/C-08_pdl.md)）；C-09 仍可裁 |
 | 30 / C-10 | Module C Checklist | ⏳ |
 
 硬边界：不重开访存教程；不算子数值正文（→ D）；Graph 生产叠法 / Torch capture → E。详见 [Module-C.md](CUDA专栏大纲/Module-C.md)。
@@ -286,10 +286,10 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 |---|---|---|
 | A | ✅ | 导读 + A-01～A-10 已收束 |
 | B | ✅ | B-01～B-10 已收口（B-04：hint ~1×，streaming 19.58× 是合并） |
-| C | 🟡 | C-01～C-07 ✅；C-08～C-09 候选；C-10 未开 |
+| C | 🟡 | C-01～C-08 ✅；C-09 候选；C-10 未开 |
 | D / E | ⏳ | 章表已锁；无代码目录 |
 
-**当前焦点（只一条主线）**：**C-07 Persistent ✅**（5090：sweep 32×→3740×；`work=4096`→314×；oversub 更慢）。C-08～C-10 **不阻塞**。D/E 不开写。
+**当前焦点（只一条主线）**：**C-08 PDL** 已收口（5090 定点 1.13×，曲线贴 1×）。C-09～C-10 **不阻塞**。D/E 不开写。
 
 ---
 

@@ -1,7 +1,7 @@
 # Module C 大纲：核心编程技巧与并发原语（21–30）
 
-> 状态：🟡 前半已收束（**C-01～C-07 ✅**；C-08～C-09 候选；C-10 未开）。  
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.3 · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md)
+> 状态：🟡 前半已收束（**C-01～C-08 ✅**；C-09 候选；C-10 未开）。  
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.3 · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md) · C-07：[`C-07_persistent.md`](C-07_persistent.md) · C-08：[`C-08_pdl.md`](C-08_pdl.md)
 
 ## 模块目标
 
@@ -33,7 +33,7 @@
 | 25 | **C-05** | Kernel fusion 代价边界 | fusion vs 多 kernel：寄存器 / occupancy / 可维护性 | ✅ [大纲](C-05_kernel_fusion.md) |
 | 26 | **C-06** | CUDA Graph 与 launch overhead | 先测 launch 墙；生产 capture / PyTorch 留给 Module E | ✅ [大纲](C-06_cuda_graph.md) |
 | 27 | C-07 | Persistent / 常驻网格拉活 | 1 task=1 launch；block leader 拉活；不重测 Graph | ✅ [大纲](C-07_persistent.md) 5090 已测 |
-| 28 | C-08 | 计算侧多 kernel 重叠（候选） | 可并入 C-06 一节；防滑回 A-08 | ⏳ 候选 |
+| 28 | C-08 | PDL / 同流依赖核提前启动 | 不做 Host 双 stream / CE；不重测 Graph | ✅ [大纲](C-08_pdl.md) 5090 已测（1.13× / 1× 量级） |
 | 29 | C-09 | （预留：divergence 工程处方 / named barrier 等） | 开写 C-06 后再定；勿锁死空壳主题 | ⏳ 候选 |
 | 30 | C-10 | Module C Checklist | 症状→证据→处方；无强制新 `.cu`（对齐 B-10） | ⏳ |
 
@@ -63,7 +63,7 @@
 
 ## 开写交接
 
-- **已收束**：C-01～C-07（正文 + `docs/results/C-0N_*`）。
-- **不阻塞**：C-08～C-09 仍候选；C-10 未开。
-- **当前**：C-07 ✅。后半不阻塞。
+- **已收束**：C-01～C-08（正文 + `docs/results/C-0N_*`）。
+- **不阻塞**：C-09 仍候选；C-10 未开。
+- **当前**：C-08 已收口（5090 定点 1.13×，曲线贴 1×）。C-09～C-10 不阻塞。
 - **访存回退**：问题其实是带宽/布局时，先回 [`../results/B-10_checklist.md`](../results/B-10_checklist.md)。

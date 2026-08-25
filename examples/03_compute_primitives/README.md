@@ -11,5 +11,6 @@ Module C 配套实验。正文在 `article/03_compute_primitives/`。
 | **C-05** | `05_kernel_fusion.cu` | `--mode sweep` / `--mode modes` | `docs/results/C-05_*`；`python scripts/plot_c05_kernel_fusion.py` |
 | **C-06** | `06_cuda_graph.cu` | `--mode sweep` / `--mode sweep_work` / `--mode modes` | `docs/results/C-06_*`；`python scripts/plot_c06_cuda_graph.py` |
 | **C-07** | `07_persistent.cu` | `--mode sweep` / `--mode sweep_work` / `--mode modes` | `docs/results/C-07_*`；`python scripts/plot_c07_persistent.py` |
+| **C-08** | `08_pdl.cu` | `--mode sweep` / `--mode sweep_tail` / `--mode modes` | `docs/results/C-08_*`；`python scripts/plot_c08_pdl.py` |
 
 增删 `.cu` 后先重跑 `cmake`，再 build。
