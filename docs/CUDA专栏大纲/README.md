@@ -6,6 +6,7 @@
 |---|---|---|
 | [A-07_memory_spaces.md](A-07_memory_spaces.md) | ✅ | Module A：空间 / UVA / mapped；正文+示例已落地 |
 | [A-08_async_stream.md](A-08_async_stream.md) | ✅ | Module A：Stream / Event / 流水线；5090 A/B≈8.40×、C/B≈1.30× |
+| [A-09_sanitizer.md](A-09_sanitizer.md) | ✅ | Module A：Sanitizer；5090 memcheck/racecheck/synccheck 三 PASS |
 | [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；**新章样板**（对照审稿） |
 | [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板**（对照审稿） |
 | [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板**（含 RTX 5090 实测） |

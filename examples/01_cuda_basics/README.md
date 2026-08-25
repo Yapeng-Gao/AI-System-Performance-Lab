@@ -14,7 +14,7 @@
 | **第 6 章** | `06_nvrtc_jit.cpp` | nvcc / Fatbin / NVRTC | 本机 `compute_XY`；编译墙钟；verify 7.0 |
 | **第 7 章** | `07_memory_spaces.cu` | 内存空间 / UVA | 地址图；mapped 读 PASS；`localSizeBytes > 0` |
 | **第 8 章** | `08_async_pipeline.cu` | Stream / Event / 流水线 | A serial / B depth-first / C breadth-first；CUDA event median |
-| **第 9 章** | `09_debug_and_sanitizer.cu` | 调试与错误诊断 | Compute Sanitizer、内存越界检测、数据竞争检测、非法同步检测 |
+| **第 9 章** | `09_debug_and_sanitizer.cu` | Compute Sanitizer | mode 0/1/2 → memcheck/racecheck/synccheck |
 | **第 10 章** | `10_roofline_demo.cu` | 性能建模第一性原理 | Roofline 模型、带宽极限测试、算力极限测试、Arithmetic Intensity |
 
 ## 🚀 快速开始
@@ -388,131 +388,25 @@ Linux/WSL；看 NSYS 时间轴 copy∥kernel。不进 TL;DR 数字。
 
 ---
 
-### 第 9 章：调试与错误诊断 (`09_debug_and_sanitizer.cu`)
+### 第 9 章：Compute Sanitizer (`09_debug_and_sanitizer.cu`)
 
-**Bug Generator**：故意制造三种典型 GPU 错误，演示 Compute Sanitizer 的检测能力。
+**口径**：故意种 bug，用 `compute-sanitizer` 归因。不是 timing bench。initcheck 无独立 mode。
 
-#### 核心知识点
-
-1. **Compute Sanitizer 工具套件**：
-   - **Memcheck**：检测内存越界访问、未初始化内存使用、内存泄漏
-   - **Racecheck**：检测 Shared Memory 和 Global Memory 的数据竞争
-   - **Synccheck**：检测非法同步操作（如分支发散中的 `__syncthreads()`）
-   - 这些工具是 CUDA 官方提供的运行时错误检测工具，类似于 Valgrind
-
-2. **内存越界检测（Out-of-Bounds）**：
-   - 演示当线程索引超出分配的内存范围时的行为
-   - `oob_kernel` 中，当 `idx == n` 时发生越界写入
-   - Memcheck 能够精确定位越界访问的位置和线程索引
-
-3. **数据竞争检测（Race Condition）**：
-   - 演示多个线程同时读写 Shared Memory 同一地址的问题
-   - `race_kernel` 中，所有线程同时执行 `s_val += 1`，结果未定义
-   - Racecheck 能够检测到这种竞争条件，并报告冲突的线程
-
-4. **非法同步检测（Illegal Synchronization）**：
-   - 演示在分支发散区域调用 `__syncthreads()` 的问题
-   - `illegal_sync_kernel` 中，只有一半线程能到达同步点，导致死锁
-   - Synccheck 能够检测到这种非法同步，并报告发散的分支
-
-#### 运行方式
+| mode | bug | tool |
+|------|-----|------|
+| 0 | OOB write `data[N]`（本机 memcheck PASS） | `memcheck` |
+| 1 | SMEM race（本机 Hazard PASS） | `racecheck` |
+| 2 | `__syncwarp` mask 缺 thread（本机 Invalid arguments PASS） | `synccheck` |
 
 ```bash
-# 直接运行（会触发错误，但可能不会立即报错）
-./bin/01_cuda_basics_09_debug_and_sanitizer 0  # Out-of-Bounds
-./bin/01_cuda_basics_09_debug_and_sanitizer 1  # Race Condition
-./bin/01_cuda_basics_09_debug_and_sanitizer 2  # Illegal Sync
-
-# 使用 Sanitizer 检测（推荐）
-cd examples/01_cuda_basics
-bash 09_run_sanitizer.sh
+./bin/01_cuda_basics_09_debug_and_sanitizer 0
+compute-sanitizer --tool memcheck  ./bin/01_cuda_basics_09_debug_and_sanitizer 0
+compute-sanitizer --tool racecheck ./bin/01_cuda_basics_09_debug_and_sanitizer 1
+compute-sanitizer --tool synccheck ./bin/01_cuda_basics_09_debug_and_sanitizer 2
+# or: bash examples/01_cuda_basics/09_run_sanitizer.sh
 ```
 
-#### 预期输出（使用 Sanitizer）
-
-```shell
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (19,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (21,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (23,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (25,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (27,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (29,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-========= Barrier error detected. Divergent thread(s) in warp.
-=========     at illegal_sync_kernel(int *)+0xa0 in 09_debug_and_sanitizer.cu:61
-=========     by thread (31,0,0) in block (0,0,0)
-=========     Saved host backtrace up to driver entry point at kernel launch time
-=========         Host Frame: main [0x1754] in 01_cuda_basics_09_debug_and_sanitizer
-=========
-CUDA Error: unspecified launch failure at /data/AI-System-Performance-Lab/examples/01_cuda_basics/09_debug_and_sanitizer.cu:104
-========= Target application returned an error
-========= ERROR SUMMARY: 16 errors
-
-Done. Analyze the output above to find the bugs.
-```
-
-#### 调试工具
-
-项目提供了 `09_run_sanitizer.sh` 脚本，自动运行三种 Sanitizer 工具：
-
-```bash
-cd examples/01_cuda_basics
-bash 09_run_sanitizer.sh
-```
-
-**注意**：
-- 脚本会自动检测构建目录（支持 Windows/CLion 和 Linux 两种构建方式）
-- **需要安装 CUDA Toolkit**（Compute Sanitizer 随 CUDA Toolkit 一起安装）
-- 脚本会依次运行三种检测工具，输出详细的错误信息
-
-该脚本可以：
-- **自动运行 Memcheck**：检测内存越界和泄漏
-- **自动运行 Racecheck**：检测数据竞争
-- **自动运行 Synccheck**：检测非法同步
-
-#### 技术细节
-
-- **Compute Sanitizer**：CUDA 11.0+ 提供的运行时错误检测工具
-- **内存越界**：可能导致程序崩溃或数据损坏，但有时可能不会立即报错
-- **数据竞争**：结果未定义，可能导致难以调试的 Bug
-- **非法同步**：会导致死锁或未定义行为，Synccheck 能够检测到
-
-#### 注意事项
-
-- Compute Sanitizer 会显著降低程序性能（通常慢 10-100 倍），仅用于调试
-- 某些错误（如异步错误）可能不会立即报错，需要等待同步点
-- 建议在开发阶段定期使用 Sanitizer 检查代码
-- Windows 环境下 Compute Sanitizer 功能有限，建议在 Linux/WSL 环境中使用
+期望：报告里出现 planted kernel 名与 ERROR/Hazard。裸跑可能不崩。
 
 ---
 

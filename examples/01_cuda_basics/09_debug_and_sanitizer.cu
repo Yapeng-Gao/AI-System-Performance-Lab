@@ -1,115 +1,146 @@
 /**
- * [Module A] 09. 调试与错误诊断
- * Bug Generator: 故意制造三种典型 GPU 错误，用于演示 Sanitizer 的威力。
+ * [Module A] 09. Compute Sanitizer bug generator
  *
- * 用法: ./09_debug_and_sanitizer <mode>
- * mode 0: Out-of-Bounds (越界访问)
- * mode 1: Race Condition (数据竞争)
- * mode 2: Illegal Sync (非法同步/死锁)
+ * Intentional bugs for compute-sanitizer (not a performance bench):
+ *   0  OOB write              → --tool memcheck
+ *   1  SMEM data race         → --tool racecheck
+ *   2  illegal __syncwarp mask → --tool synccheck
+ *
+ * Mode 2 uses NVIDIA sample-style Invalid arguments (thread reaches
+ * __syncwarp but is not in the mask). Classic divergent __syncthreads
+ * returned 0 errors on RTX 5090 / sm_120 in our first runs.
+ *
+ * initcheck: optional; not in this binary. Overlap: A-08. Roofline: A-10.
  */
 
-#include <iostream>
-#include <vector>
-#include <cuda_runtime.h>
 #include <cstdio>
+#include <cstdlib>
+#include <cuda_runtime.h>
 
-#define CUDA_CHECK(call) \
-    do { \
-        cudaError_t err = call; \
-        if (err != cudaSuccess) { \
-            fprintf(stderr, "CUDA Error: %s at %s:%d\n", \
-                    cudaGetErrorString(err), __FILE__, __LINE__); \
-            exit(EXIT_FAILURE); \
-        } \
+#define CUDA_CHECK(call)                                                       \
+    do {                                                                       \
+        cudaError_t err = call;                                                \
+        if (err != cudaSuccess) {                                              \
+            fprintf(stderr, "CUDA Error: %s at %s:%d\n",                       \
+                    cudaGetErrorString(err), __FILE__, __LINE__);              \
+            exit(EXIT_FAILURE);                                                \
+        }                                                                      \
     } while (0)
 
-// --- Bug 1: 内存越界 (Out of Bounds) ---
-// 申请了 N 个，但试图访问 N+1
+// Bug: valid indices are 0..n-1; thread 0 writes data[n].
 __global__ void oob_kernel(int* data, int n) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    // 错误：当 idx == n 时，发生了越界写入
-    if (idx <= n) {
-        data[idx] = 1;
+    if (threadIdx.x == 0 && blockIdx.x == 0) {
+        data[n] = 42;
     }
 }
 
-// --- Bug 2: 数据竞争 (Race Condition) ---
-// 多个线程同时写 Shared Memory 同一地址，且没有原子操作或同步
+// Bug: many threads RMW the same SMEM location without atomics/sync between RMWs.
 __global__ void race_kernel(int* out) {
     __shared__ int s_val;
-    if (threadIdx.x == 0) s_val = 0;
+    if (threadIdx.x == 0) {
+        s_val = 0;
+    }
     __syncthreads();
 
-    // 错误：多个线程同时读写 s_val，结果未定义
-    // 正确做法是使用 atomicAdd 或 归约
     s_val += 1;
 
     __syncthreads();
-    if (threadIdx.x == 0) *out = s_val;
+    if (threadIdx.x == 0) {
+        *out = s_val;
+    }
 }
 
-// --- Bug 3: 非法同步 (Illegal Sync) ---
-// 在分支发散区域调用 __syncthreads()，导致死锁或未定义行为
-__global__ void illegal_sync_kernel(int* data) {
-    int tid = threadIdx.x;
+// Bug: threads 0..16 reach __syncwarp, but mask only enables 0..15 (thread 16 missing).
+// Official synccheck class: Invalid arguments. (illegal_syncwarp sample pattern)
+__global__ void illegal_sync_kernel(int* out) {
+    __shared__ int smem[32];
+    const int tx = static_cast<int>(threadIdx.x);
 
-    // 奇数线程进入 if，偶数线程跳过
-    if (tid % 2 != 0) {
-        data[tid] *= 2;
-        // 错误：只有一半线程能到达这里，另一半在外面等
-        // 这会导致 Synccheck 报错，或者直接死锁
-        __syncthreads();
-    } else {
-        data[tid] += 1;
+    if (tx < 17) {
+        smem[tx] = tx;
+        const unsigned mask = 0x0000ffffu;
+        __syncwarp(mask);
     }
+    if (tx == 0) {
+        *out = smem[0];
+    }
+}
+
+static void print_usage(const char* argv0) {
+    printf("Usage: %s <mode>\n", argv0);
+    printf("  0  OOB write                 → compute-sanitizer --tool memcheck\n");
+    printf("  1  SMEM race                 → compute-sanitizer --tool racecheck\n");
+    printf("  2  illegal __syncwarp mask   → compute-sanitizer --tool synccheck\n");
+    printf("Bare run may not crash; hang sanitizer to attribute the bug.\n");
 }
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        printf("Usage: %s <mode>\n", argv[0]);
-        printf("  0: Out-of-Bounds Write\n");
-        printf("  1: Shared Memory Race\n");
-        printf("  2: Illegal Synchronization\n");
+        print_usage(argv[0]);
         return 1;
     }
 
-    int mode = atoi(argv[1]);
-    int N = 1024;
-    int* d_data;
+    const int mode = atoi(argv[1]);
+    if (mode < 0 || mode > 2) {
+        print_usage(argv[0]);
+        return 1;
+    }
 
-    printf("[Host] Starting Bug Generator (Mode %d)...\n", mode);
+    cudaDeviceProp prop{};
+    CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    printf("GPU: %s\n", prop.name);
+    printf("sm_%d%d\n", prop.major, prop.minor);
+    printf("[Host] Bug generator mode %d (correctness demo, not a timing bench)\n",
+           mode);
 
     if (mode == 0) {
-        // --- Case 0: OOB ---
-        CUDA_CHECK(cudaMalloc(&d_data, N * sizeof(int)));
-        // Launch 1025 threads (N+1)
-        oob_kernel<<<1, N + 1>>>(d_data, N);
-        CUDA_CHECK(cudaDeviceSynchronize());
-        printf("[Host] OOB Kernel Finished (Did it crash?)\n");
+        constexpr int N = 256;
+        int* d_data = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_data, static_cast<size_t>(N) * sizeof(int)));
+        printf("[Host] Planted: oob_kernel thread0 writes data[N] on length-N buffer\n");
+        printf("[Host] Launch: <<<1,32>>> (valid blockDim; OOB is the store, not the grid)\n");
+        printf("[Host] Expect: memcheck Invalid __global__ write\n");
+        oob_kernel<<<1, 32>>>(d_data, N);
+        const cudaError_t sync_err = cudaDeviceSynchronize();
+        if (sync_err != cudaSuccess) {
+            printf("[Host] After sync: %s (expected after OOB; sticky error follows)\n",
+                   cudaGetErrorString(sync_err));
+            // Fatal sticky error: do not CUDA_CHECK free — just best-effort cleanup.
+            (void)cudaFree(d_data);
+            return 0;
+        }
+        printf("[Host] Sync returned success (unexpected without sanitizer crash path)\n");
         CUDA_CHECK(cudaFree(d_data));
-    }
-    else if (mode == 1) {
-        // --- Case 1: Race ---
-        int* d_out;
+    } else if (mode == 1) {
+        int* d_out = nullptr;
         CUDA_CHECK(cudaMalloc(&d_out, sizeof(int)));
+        printf("[Host] Planted: race_kernel SMEM s_val += 1 without atomics\n");
+        printf("[Host] Expect: racecheck Hazard (often Warning, not ERROR)\n");
         race_kernel<<<1, 32>>>(d_out);
         CUDA_CHECK(cudaDeviceSynchronize());
-        printf("[Host] Race Kernel Finished (Check Sanitizer output)\n");
+        int h_out = 0;
+        CUDA_CHECK(cudaMemcpy(&h_out, d_out, sizeof(int), cudaMemcpyDeviceToHost));
+        printf("[Host] Race kernel finished; out=%d (undefined if raced)\n", h_out);
+        CUDA_CHECK(cudaFree(d_out));
+    } else {
+        int* d_out = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_out, sizeof(int)));
+        printf("[Host] Planted: illegal_sync_kernel threads 0..16 call __syncwarp(mask=0xffff)\n");
+        printf("[Host] Expect: synccheck Barrier error / Invalid arguments\n");
+        illegal_sync_kernel<<<1, 32>>>(d_out);
+        const cudaError_t sync_err = cudaDeviceSynchronize();
+        if (sync_err != cudaSuccess) {
+            printf("[Host] After sync: %s\n", cudaGetErrorString(sync_err));
+            (void)cudaFree(d_out);
+            return 0;
+        }
+        printf("[Host] Sync returned success (use synccheck to see the hazard)\n");
         CUDA_CHECK(cudaFree(d_out));
     }
-    else if (mode == 2) {
-        // --- Case 2: Sync ---
-        CUDA_CHECK(cudaMalloc(&d_data, 32 * sizeof(int)));
-        illegal_sync_kernel<<<1, 32>>>(d_data);
-        CUDA_CHECK(cudaDeviceSynchronize());
-        printf("[Host] Sync Kernel Finished\n");
-        CUDA_CHECK(cudaFree(d_data));
-    }
 
-    // 注意：如果有异步错误，可能要等到这里甚至程序退出时才报错
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        printf("[Host] Caught Error: %s\n", cudaGetErrorString(err));
+    const cudaError_t last = cudaGetLastError();
+    if (last != cudaSuccess) {
+        printf("[Host] cudaGetLastError: %s\n", cudaGetErrorString(last));
     }
 
     return 0;
