@@ -48,14 +48,16 @@ echo "    (Ideally ~1 per instruction. 32 means 32-way conflict)"
 echo "  - smsp__inst_executed.sum"
 echo ""
 
+# 旁证：看 shared wavefront，不要把 ncu 附着时的墙钟 ms 当结论。
 ncu --metrics \
     l1tex__data_pipe_lsu_wavefronts_mem_shared.sum,smsp__inst_executed.sum \
     --force-overwrite \
     --output "$OUTPUT_REP" \
-    "$TARGET_BIN"
+    "$TARGET_BIN" --mode modes
 
 echo ""
 echo "Done. Open ${OUTPUT_REP}.ncu-rep and check 'Source' / 'Details' view."
+echo "Ignore program-printed ms under ncu attach; use bare --mode modes median."
 echo "Expectations:"
 echo "  - Naive   Kernel : ~32 wavefronts per shared load (heavy conflict)"
 echo "  - Padding Kernel : ~1 wavefront per shared load"

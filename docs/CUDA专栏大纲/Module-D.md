@@ -1,25 +1,48 @@
 # Module D 大纲：计算原语与高级算子实现（31–40）
 
-> 状态：⏳ 规划中。无代码目录。
+> 状态：⏳ 规划中。无代码目录。开写第一章时再拆 `D-0N_*.md`。
 >
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md)
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.4
 
 ## 模块目标
 
-从「会写 kernel」走向「能写出接近库级质量的 kernel」，形成算子实现范式。
+从「会写 kernel」走向「能写出接近库级质量的 kernel」，形成**可验证**的算子实现范式（正确性 + Roofline 形状 + 决策表）。
+
+## 教法弧（锁定）
+
+```text
+规约族 D-01～D-03  →  矩阵 D-04 / D-05  →  epilogue D-06
+  →  （候选 D-07～D-09）  →  索引 D-10
+```
+
+与专栏统一：**原理(+图) → 短演进/钩子 → 实验(median) → 出口**。CUTLASS/CuTe 仅对照，不写库教程。开写前拆 `D-0N_*.md`。
+
+## 章节总表（31–40 ↔ D-01～D-10）
+
+| 总序 | 章 | 主题 | 一句话边界 | 状态 |
+|---|---|---|---|---|
+| 31 | **D-01** | Reduction | Device 级规约；不重讲 C-01 warp 原语课 | ⏳ |
+| 32 | **D-02** | Softmax | 数值稳定 + 带宽/算力对照 | ⏳ |
+| 33 | **D-03** | LayerNorm / RMSNorm | 与 Softmax 去重；融合作钩子 → D-06 / C-05 | ⏳ |
+| 34 | **D-04** | Naive GEMM → tiling | 接 B-09 布局；不上 TC 全套 | ⏳ |
+| 35 | **D-05** | Tensor Core GEMM 入门 | 接 B-08/B-02；不复刻 CUTLASS | ⏳ |
+| 36 | **D-06** | Epilogue / 偏置·激活融合 | 接 C-05 fusion 代价 | ⏳ |
+| 37 | D-07 | Attention 微基准（候选） | 非生产 FA；可裁 | ⏳ 候选 |
+| 38 | D-08 | 量化/低精度钩子（候选） | 不写完整推理栈 | ⏳ 候选 |
+| 39 | D-09 | 预留 | 开写中期再定 | ⏳ 候选 |
+| 40 | **D-10** | Module D Checklist | 症状→证据→处方；无强制新 `.cu` | ⏳ |
 
 ## 落地策略
 
-1. 先做 **Reduction / Softmax / LayerNorm**（易评测、易验证正确性）。
-2. 再做 **GEMM / Tensor Core**（矩阵分块、布局、与 B-08/B-09 布局钩子汇合）。
-3. Attention / FA 类生产叠法作扩展或后置章，避免过早抢 Module E。
+1. 先 D-01～D-03（易评测、易验数值）。
+2. 再 D-04～D-06（矩阵与 epilogue）。
+3. D-07～D-09 **可裁**；不为凑满 10 章写空壳。
+4. 目录：落地首章时再建 `article/04_*` / `examples/04_*`（名称以开写时规划为准）。
 
-## 建议主题骨架
+## 与前后 Module 的硬边界
 
-| 阶段 | 主题 | 备注 |
-|---|---|---|
-| 通用算子 | Reduce / Softmax / LayerNorm / RMSNorm | 数值稳定性 + 带宽/算力对照 |
-| 矩阵 | Naive GEMM → tiling → Tensor Core | CuTe/CUTLASS 可作对照，不必复刻生产库 |
-| 进阶 | 融合算子 / epilogue | 与 C 的 fusion、B 的布局交叉 |
-
-开写第一章时再拆独立 `D-0N_*.md` 大纲文件。
+| 对象 | Module D 原则 |
+|---|---|
+| Module B | 不重开 coalescing/TMA 教程；布局/TMA 只挂钩 |
+| Module C | 不重讲 warp/CG/atomic；融合代价回链 C-05 |
+| Module E | 不算子接框架、不上多卡；生产叠法归 E |

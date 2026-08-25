@@ -1,12 +1,20 @@
 # Module C 大纲：核心编程技巧与并发原语（21–30）
 
-> 状态：🟡 进行中（**C-01～C-06 ✅**；下一焦点 C-07 候选 / Checklist）。目录已随首章落地。
->
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md)
+> 状态：🟡 前半已收束（**C-01～C-06 ✅**；C-07～C-09 候选；C-10 未开）。  
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.3 · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md)
 
 ## 模块目标
 
 让「正确性、可维护性、可调优性」成为 CUDA 工程默认配置：用 **可复现 micro-bench + 决策表** 固定并发原语的用法与代价，而不是靠经验主义。
+
+## 教法弧（锁定）
+
+```text
+通信 C-01 / C-02  →  争用与同步 C-03 / C-04  →  摊销 launch C-05 / C-06
+  →  （候选 C-07～C-09）  →  索引 C-10
+```
+
+专栏主线在规划 §7（B 弧）。C 后半 **不阻塞**。
 
 ## 落地约定
 
@@ -56,5 +64,5 @@
 ## 开写交接
 
 - **已收束**：C-01～C-06（正文 + `docs/results/C-0N_*`）。
-- **当前焦点**：开写前确认 C-07 候选命题，或先做 Module C Checklist。
+- **不阻塞**：C-07～C-09 保持候选；C-10 可在 B 弧对齐后再做。
 - **访存回退**：问题其实是带宽/布局时，先回 [`../results/B-10_checklist.md`](../results/B-10_checklist.md)。

@@ -1,25 +1,36 @@
 # CUDA 专栏大纲（分册）
 
-本目录存放**按章/按模块的写作大纲**。进度总表与文档地图见 [`../CUDA专栏规划.md`](../CUDA专栏规划.md)。
+本目录存放 **L1 模块地图** 与 **按章写作大纲**。L0 全景与整体布局见 [`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2–§4。
+
+## 模块地图（L1）
+
+| 文件 | 状态 | 教法弧 |
+|---|---|---|
+| [Module-A.md](Module-A.md) | ✅ | 模型 → … → Roofline |
+| [Module-B.md](Module-B.md) | 🟡 | 形状 → on-chip → 跨空间 → 引擎 → 布局 → 索引 |
+| [Module-C.md](Module-C.md) | 🟡 | 通信 → 争用/同步 → 摊销 launch；（后半可裁） |
+| [Module-D.md](Module-D.md) | ⏳ | 规约族 → 矩阵 → epilogue |
+| [Module-E.md](Module-E.md) | ⏳ | 可调用 → 可测量 → 可交付 → 多卡钩子 |
+
+## 按章大纲
 
 | 文件 | 状态 | 说明 |
 |---|---|---|
-| [A-07_memory_spaces.md](A-07_memory_spaces.md) | ✅ | Module A：空间 / UVA / mapped；正文+示例已落地 |
-| [A-08_async_stream.md](A-08_async_stream.md) | ✅ | Module A：Stream / Event / 流水线；5090 A/B≈8.40×、C/B≈1.30× |
-| [A-09_sanitizer.md](A-09_sanitizer.md) | ✅ | Module A：Sanitizer；5090 memcheck/racecheck/synccheck 三 PASS |
-| [A-10_roofline.md](A-10_roofline.md) | ✅ | Module A：Roofline；5090 BW≈1954 / FP32≈49 / ridge≈25 |
-| [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；**新章样板**（对照审稿） |
-| [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板**（对照审稿） |
-| [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板**（含 RTX 5090 实测） |
-| [Module-C.md](Module-C.md) | 🟡 | 进行中：C-01～C-06 ✅；下一焦点 C-07/Checklist |
+| [A-07_memory_spaces.md](A-07_memory_spaces.md) | ✅ | Module A：空间 / UVA / mapped |
+| [A-08_async_stream.md](A-08_async_stream.md) | ✅ | Module A：Stream / Event / 流水线 |
+| [A-09_sanitizer.md](A-09_sanitizer.md) | ✅ | Module A：Sanitizer |
+| [A-10_roofline.md](A-10_roofline.md) | ✅ | Module A：Roofline |
+| [B-01_global_mem.md](B-01_global_mem.md) | ✅ | 形状弧首章；5090 `0.988×` / `1.038×` |
+| [B-02_shared_mem.md](B-02_shared_mem.md) | ✅ | on-chip：Bank / Padding / Swizzle；5090 padding 14.12× / swizzle 12.41× |
+| [B-07_cp_async.md](B-07_cp_async.md) | ✅ | 已落地；**新章样板** |
+| [B-08_tma.md](B-08_tma.md) | ✅ | 已落地；**新章样板** |
+| [B-09_layout.md](B-09_layout.md) | ✅ | 已落地；**新章样板** |
 | [C-01_warp_primitives.md](C-01_warp_primitives.md) | ✅ | 正文+示例+5090 实测+NCU |
-| [C-02_cooperative_groups.md](C-02_cooperative_groups.md) | ✅ | 正文+示例+5090 实测（抽象税≈0；>32 悬崖） |
-| [C-03_atomics_contention.md](C-03_atomics_contention.md) | ✅ | 正文+示例+5090 实测（smem~6.3×；agg≈naive） |
-| [C-04_sync_layers.md](C-04_sync_layers.md) | ✅ | 正文+示例+5090 实测（grid/block~17×） |
-| [C-05_kernel_fusion.md](C-05_kernel_fusion.md) | ✅ | 正文+示例+5090 实测（fused~3.9～9.8×；fat 8×伤） |
-| [C-06_cuda_graph.md](C-06_cuda_graph.md) | ✅ | 正文+示例+5090 实测（短核~3.7～4.1×；work=4096→1.01×） |
-| [Module-D.md](Module-D.md) | ⏳ | 算子实现（远期） |
-| [Module-E.md](Module-E.md) | ⏳ | DL 工程集成（远期） |
+| [C-02_cooperative_groups.md](C-02_cooperative_groups.md) | ✅ | 正文+示例+5090 实测 |
+| [C-03_atomics_contention.md](C-03_atomics_contention.md) | ✅ | 正文+示例+5090 实测 |
+| [C-04_sync_layers.md](C-04_sync_layers.md) | ✅ | 正文+示例+5090 实测 |
+| [C-05_kernel_fusion.md](C-05_kernel_fusion.md) | ✅ | 正文+示例+5090 实测 |
+| [C-06_cuda_graph.md](C-06_cuda_graph.md) | ✅ | 正文+示例+5090 实测 |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
 **约定**：新章大纲新建 `A-0N_*` / `B-0N_*` / `C-0N_*.md`，在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  

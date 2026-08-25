@@ -1,0 +1,4 @@
+mode,median_ms,gbps,speedup_vs_aligned
+misaligned,0.077952,1603.5510,0.9881
+aligned,0.077024,1622.8708,1.0000
+float4,0.074240,1683.7285,1.0375

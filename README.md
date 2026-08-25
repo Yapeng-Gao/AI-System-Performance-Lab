@@ -14,6 +14,7 @@
 
 | 章 | 一句话 |
 |---|---|
+| B-02 SMEM | 列扫：padding **14.12×** / swizzle **12.41×**（相对 naive） |
 | B-09 布局 | `touch_fields=1` 时 SoA / AoS ≈ **13.6×** |
 | C-06 Graph | 短核链 `stream/graph` ≈ **3.7～4.1×**；`work=4096` → **1.01×** |
 | C-05 Fusion | 瘦融合随链长 **3.9×→9.8×**；`fat` occupancy 6→1，相对瘦融合慢 **8×** |
@@ -49,7 +50,7 @@ AI-System-Performance-Lab/
 └── CMakeLists.txt
 ```
 
-**当前主线**：导读已收进仓库；Module A + B 已收束；Module C：C-01～C-06 ✅。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
+**当前主线**：Module A ✅；B-01 / B-02 ✅，下一章 B-03；C-01～C-06 ✅。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
 
 ## 快速开始 (Windows/Linux)
 
@@ -107,6 +108,8 @@ cmake --build . --config Release --parallel 8
 
 ```bash
 ./build/bin/01_cuda_basics_01_hello_modern
+./build/bin/02_memory_optim_01_global_mem_bandwidth --mode modes
+./build/bin/02_memory_optim_02_shared_mem_bank_conflict --mode modes
 ./build/bin/02_memory_optim_06_pinned_dma --mode pinned --mb 256
 ./build/bin/03_compute_primitives_01_warp_primitives --mode sweep
 ./build/bin/03_compute_primitives_02_cooperative_groups --mode sweep
@@ -124,6 +127,8 @@ cmake --build . --config Release --parallel 8
 重画实测图：
 
 ```bash
+python scripts/plot_b01_global_mem.py
+python scripts/plot_b02_shared_mem.py
 python scripts/plot_b05_unified_memory.py
 python scripts/plot_b06_pinned_dma.py
 python scripts/plot_b07_cp_async.py
@@ -139,8 +144,8 @@ python scripts/plot_c06_cuda_graph.py
 | :--- | :--- | :--- |
 | **导读** | `article/01_cuda_basic/00. 专栏导读*` | ✅ |
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
-| **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | ✅ B-01～B-10 |
-| **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | 🟡 C-01～C-06 ✅；C-07～C-10 规划 |
+| **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | 🟡 B-01 / B-02 ✅；B-03～B-04 对齐中；下一章 B-03 |
+| **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | 🟡 C-01～C-06 ✅；后半候选不阻塞 |
 | **Module D–E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。

@@ -49,12 +49,12 @@ echo "  - l1tex__t_sectors_pipe_lsu_mem_global_op_ld (Global Load Sectors)"
 echo "  - l1tex__data_pipe_lsu_wavefronts_mem_shared (Shared Mem Wavefronts)"
 echo ""
 
-# --set full : 收集所有指标 (包含 Memory Workload Analysis)
-# 或者只收集特定 section 以加快速度
+# 可选旁证：主证据请裸跑 --mode modes（勿把 ncu 附着时程序 ms 当结论）
+# Memory Workload / sectors；过滤名按需加 --kernel-name-base function
 ncu --set full \
     --force-overwrite \
     --output "$OUTPUT_REP" \
-    "$TARGET_BIN"
+    "$TARGET_BIN" --mode modes
 
 echo ""
 echo "Done. Open ${OUTPUT_REP}.ncu-rep to see:"

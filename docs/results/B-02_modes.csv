@@ -1,0 +1,4 @@
+mode,median_ms,speedup_vs_naive
+naive,1.257568,1.0000
+padding,0.089056,14.1211
+swizzle,0.101376,12.4050

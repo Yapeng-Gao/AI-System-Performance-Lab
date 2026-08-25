@@ -1,5 +1,5 @@
 ---
-description: ASPL CUDA 专栏硬约束——写稿/补实测/改 examples 时先走 aspl-cuda-article skill；commit 前同步导航文档
+description: ASPL CUDA 专栏硬约束——全景主线已锁；写稿/补实测/改 examples 先走 aspl-cuda-article；commit 前同步导航
 globs: article/**/*.md,docs/CUDA*/**,docs/results/**,docs/仓库架构与现状.md,examples/**/*.cu,examples/**/*.sh,examples/**/README.md,scripts/plot_*.py,README.md
 alwaysApply: false
 ---
@@ -10,6 +10,7 @@ alwaysApply: false
 
 ## 必须遵守
 
+0. **全景主线已锁定。** 权威是 `docs/CUDA专栏规划.md` **§2 L0 + §2.2 展开权 + §3 布局 + §4 教法弧**。改正文 / 大纲 / `.cu` / 导航都必须落在这条线上：A 映射度量 → B 形状→on-chip→跨空间→引擎→布局 → C 通信→争用同步→摊销 launch → D 规约→矩阵→epilogue → E 可调用→可测量→可交付。禁止改弧、抢展开权、另起叙事（例如 B-01/B-02 开篇主讲 TMA）、并列第二条「当前焦点」。**唯一例外**：用户明确说「优化全景 / 改全景图 / 重锁 L0」。否则先钩子、后展开，细节回指定章。
 1. **主证据** = 裸跑 CUDA event **median**；禁止把 `ncu` 附着时程序自打印的 ms/GB/s 当结论。
 2. **用户一贴** sweep / NCU / SASS 输出 → 立刻落 `docs/results/` 并更新正文对应节（不要只口头解读）。
 3. **默认不加** `*_profile_*.sh`；用户明确要求批量 NCU/NSYS/SASS 才加。NCU 过滤：`--kernel-name-base function|demangled|mangled` + `--kernel-name regex:…`（不要把 kernel 名塞进 `-base`）。
