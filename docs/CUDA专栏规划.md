@@ -106,7 +106,7 @@ A 会看会测 → B 会搬数据 → C 会协作与控 launch → D 会写接�
 | 框架集成 | E-05 | 不写框架源码课 |
 | Multi-GPU / NCCL | E-07 | 单卡主链之后 |
 
-Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **一句钩子**，不单开主线（C-07～C-09 候选槽可收，见 §3）。
+Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL 已收进 C-08，named barrier 收进 C-09（见 §4.3）。
 
 ---
 
@@ -127,7 +127,7 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 | 规则 | 说明 |
 |---|---|
 | 前半锁定 | A 全 10 章；B 全 10 章主题；C-01～C-06；D-01～D-06；E-01～E-07 |
-| 后半可裁 | C-07～C-09、D-07～D-09、E-08～E-09 允许合并/改名；**禁止为空凑序** |
+| 后半可裁 | D-07～D-09、E-08～E-09 仍可裁。C-07～C-09 主题已收（persistent / PDL / named barrier），不再当空槽裁掉 |
 | 新 Module 目录 | 随**首章落地**再建；禁止空 README 占坑 |
 | 编号 | 总序 1–10↔A、11–20↔B、21–30↔C、31–40↔D、41–50↔E |
 
@@ -185,16 +185,16 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 
 **章序 vs 物理**：布局（B-09）和形状（B-01）是一层，现序排在引擎之后是迁就已发布顺序，不是「先 TMA 再改 AoS」。B-01 出口同时挂 B-09。对齐 B-02 时 swizzle 只讲 bank，**不要**写成「为 TMA 服务的下一站」。
 
-### 4.3 Module C：线程怎么协作 🟡
+### 4.3 Module C：线程怎么协作 ✅
 
 > **一句话**：正确性 + 并发税 + launch/fuse。  
-> **教法弧**：通信 C-01/C-02 → 争用与同步 C-03/C-04 → 摊销 launch C-05/C-06 →（候选）→ 索引 C-10。
+> **教法弧**：通信 C-01/C-02 → 争用与同步 C-03/C-04 → 摊销 launch C-05/C-06 → 常驻 C-07 / 依赖核重叠 C-08 / 子集 barrier C-09 → 索引 C-10。
 
 | 篇章 | 主题 | 状态 |
 |---|---|---|
 | 21–26 / C-01～C-06 | Warp / CG / Atomics / Sync / Fusion / Graph | ✅ |
-| 27–29 / C-07～C-09 | Persistent · 设备侧重叠 · named barrier 等 | ✅ C-07 / C-08 已测（[C-08 大纲](CUDA专栏大纲/C-08_pdl.md)）；C-09 仍可裁 |
-| 30 / C-10 | Module C Checklist | ⏳ |
+| 27–29 / C-07～C-09 | Persistent · PDL · Named barrier | ✅ C-07 / C-08 / C-09 已测（[C-09 大纲](CUDA专栏大纲/C-09_named_barrier.md)） |
+| 30 / C-10 | Module C Checklist | ✅ [C-10 大纲](CUDA专栏大纲/C-10_checklist.md) |
 
 硬边界：不重开访存教程；不算子数值正文（→ D）；Graph 生产叠法 / Torch capture → E。详见 [Module-C.md](CUDA专栏大纲/Module-C.md)。
 
@@ -286,10 +286,10 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 |---|---|---|
 | A | ✅ | 导读 + A-01～A-10 已收束 |
 | B | ✅ | B-01～B-10 已收口（B-04：hint ~1×，streaming 19.58× 是合并） |
-| C | 🟡 | C-01～C-08 ✅；C-09 候选；C-10 未开 |
+| C | ✅ | C-01～C-10 已收口（C-10 无新 `.cu`） |
 | D / E | ⏳ | 章表已锁；无代码目录 |
 
-**当前焦点（只一条主线）**：**C-08 PDL** 已收口（5090 定点 1.13×，曲线贴 1×）。C-09～C-10 **不阻塞**。D/E 不开写。
+**当前焦点（只一条主线）**：**Module C 已收束于 C-10 Checklist**（症状 → 证据 → 处方；无新测）。D/E 不开写。
 
 ---
 
@@ -300,7 +300,7 @@ Cluster、PDL、Blackwell Tensor Memory、named barrier：需要时在邻章 **�
 - Module A：`examples/01_cuda_basics/*.cu`
 - Module B：`examples/02_memory_optim/01_*.cu` … `09_*.cu`（B-10 无新 `.cu`）
 - Module C：`examples/03_compute_primitives/*.cu`
-- 实测摘要：`docs/results/`；Checklist：`B-10_checklist.md`（日后 `C-10`）
+- 实测摘要：`docs/results/`；Checklist：`B-10_checklist.md`、`C-10_checklist.md`
 
 ### 8.2 脚本与结果
 

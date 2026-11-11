@@ -1,7 +1,7 @@
 # Module C 大纲：核心编程技巧与并发原语（21–30）
 
-> 状态：🟡 前半已收束（**C-01～C-08 ✅**；C-09 候选；C-10 未开）。  
-> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.3 · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md) · C-07：[`C-07_persistent.md`](C-07_persistent.md) · C-08：[`C-08_pdl.md`](C-08_pdl.md)
+> 状态：✅ **C-01～C-10 已收口**（C-10 为索引，无新 `.cu`）。  
+> 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.3 · C-01：[`C-01_warp_primitives.md`](C-01_warp_primitives.md) · C-02：[`C-02_cooperative_groups.md`](C-02_cooperative_groups.md) · C-03：[`C-03_atomics_contention.md`](C-03_atomics_contention.md) · C-04：[`C-04_sync_layers.md`](C-04_sync_layers.md) · C-05：[`C-05_kernel_fusion.md`](C-05_kernel_fusion.md) · C-06：[`C-06_cuda_graph.md`](C-06_cuda_graph.md) · C-07：[`C-07_persistent.md`](C-07_persistent.md) · C-08：[`C-08_pdl.md`](C-08_pdl.md) · C-09：[`C-09_named_barrier.md`](C-09_named_barrier.md) · C-10：[`C-10_checklist.md`](C-10_checklist.md)
 
 ## 模块目标
 
@@ -11,10 +11,10 @@
 
 ```text
 通信 C-01 / C-02  →  争用与同步 C-03 / C-04  →  摊销 launch C-05 / C-06
-  →  （候选 C-07～C-09）  →  索引 C-10
+  →  常驻 C-07 / 依赖核重叠 C-08 / 子集 barrier C-09  →  索引 C-10
 ```
 
-专栏主线在规划 §7（B 弧）。C 后半 **不阻塞**。
+专栏主线在规划 §7。C-10 已收口（无新测，锚点回 C-01～C-09）。
 
 ## 落地约定
 
@@ -34,12 +34,12 @@
 | 26 | **C-06** | CUDA Graph 与 launch overhead | 先测 launch 墙；生产 capture / PyTorch 留给 Module E | ✅ [大纲](C-06_cuda_graph.md) |
 | 27 | C-07 | Persistent / 常驻网格拉活 | 1 task=1 launch；block leader 拉活；不重测 Graph | ✅ [大纲](C-07_persistent.md) 5090 已测 |
 | 28 | C-08 | PDL / 同流依赖核提前启动 | 不做 Host 双 stream / CE；不重测 Graph | ✅ [大纲](C-08_pdl.md) 5090 已测（1.13× / 1× 量级） |
-| 29 | C-09 | （预留：divergence 工程处方 / named barrier 等） | 开写 C-06 后再定；勿锁死空壳主题 | ⏳ 候选 |
-| 30 | C-10 | Module C Checklist | 症状→证据→处方；无强制新 `.cu`（对齐 B-10） | ⏳ |
+| 29 | **C-09** | Named barrier（子集 warp 会合 / 单边 arrive） | 不重测 C-04 空同步；不做 mbarrier / TMA | ✅ [大纲](C-09_named_barrier.md) 5090 两边相等 1.97× |
+| 30 | C-10 | Module C Checklist | 症状→证据→处方；无新 `.cu`（对齐 B-10） | ✅ [大纲](C-10_checklist.md) |
 
 > **开写纪律**：
-> - **前半锁定**：C-01～C-06 + C-10 主题按表推进；后章开工前再拆 `C-0N_*.md`。
-> - **后半可裁**：C-07～C-09 为候选槽，允许合并/改名；不得为凑满 10 章写空教程。
+> - **前半锁定**：C-01～C-06 + C-10 主题按表推进。C-09 已测。
+> - **C-07～C-09 已收主题**：persistent / PDL / named barrier。不得再改回空槽。C-10 是索引，已落地。
 > - **硬边界**：不得抢 Module D 算子正文 / Module E 部署正文。
 
 ## 相对初稿的收紧（本次优化）
@@ -49,7 +49,7 @@
 3. **C-01 ↔ Module D**：C 只交付 **warp/block 级原语与模式**；完整 Reduce / Softmax / LN / GEMM 留给 D。
 4. **C-03 ↔ 前沿**：ARC / warp-aggregated atomics 的深度实证放 C-03；C-01 只给「elect + ballot → 聚合」钩子。
 5. **C-06 ↔ Module E**：C 测 launch / Graph 基础收益；Torch capture、部署图留给 E。
-6. **后半可裁**：C-07～C-09 不锁死；优先保证 C-01～C-06 + Checklist 有独立可测命题。
+6. **C-09 收 named barrier**：不把 divergence 机制课从 A-04 搬过来，也不把 mbarrier 从 B-07/B-08 搬过来。
 
 ## 与前后 Module 的硬边界
 
@@ -63,7 +63,6 @@
 
 ## 开写交接
 
-- **已收束**：C-01～C-08（正文 + `docs/results/C-0N_*`）。
-- **不阻塞**：C-09 仍候选；C-10 未开。
-- **当前**：C-08 已收口（5090 定点 1.13×，曲线贴 1×）。C-09～C-10 不阻塞。
+- **已收束**：C-01～C-10。C-10 正文 + [`../results/C-10_checklist.md`](../results/C-10_checklist.md)，无新 `.cu`。
+- **当前**：Module C 收到 C-10。D/E 不开写。
 - **访存回退**：问题其实是带宽/布局时，先回 [`../results/B-10_checklist.md`](../results/B-10_checklist.md)。
