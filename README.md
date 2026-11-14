@@ -21,6 +21,7 @@
 | C-07 Persistent | 一任务一发 `launch/persistent` **32×→3740×**；`work=4096`→**314×**；oversub 更慢 |
 | C-08 PDL | 同流依赖核；`serial/pdl` 贴 **1×**；定点 **1.13×**；`pdl_full`≈`pdl` |
 | C-09 Named Barrier | 两边相等 **1.97×**；某一侧为 0 贴 **1.05×**；`named_pre` **1.007×**；`indep` **0.97×** |
+| D-01 Device Reduction | float；5090 上 256 MiB 以后 `float4` **1.15×**，与 CUB 同档 |
 | C-05 Fusion | 瘦融合随链长 **3.9×→9.8×**；`fat` occupancy 6→1，相对瘦融合慢 **8×** |
 | C-04 Sync | `grid/block` ≈ **17×**；`phases`≈1（少 sync ≠ 自动更快） |
 
@@ -33,10 +34,10 @@
 | 你想做的事 | 去哪 |
 |---|---|
 | 从哪读起 | [专栏导读](article/01_cuda_basic/00.%20专栏导读：怎么读、怎么跑、本机数字从哪来.md) |
-| 读文章 | `article/01_cuda_basic/`、`article/02_memory_optim/`、`article/03_compute_primitives/` |
-| 跑章节实验 | `examples/01_cuda_basics/`、`examples/02_memory_optim/`、`examples/03_compute_primitives/` |
+| 读文章 | `article/01_cuda_basic/`、`article/02_memory_optim/`、`article/03_compute_primitives/`、`article/04_operators/` |
+| 跑章节实验 | `examples/01_cuda_basics/`、`examples/02_memory_optim/`、`examples/03_compute_primitives/`、`examples/04_operators/` |
 | 看实测与 CSV | `docs/results/` |
-| 重画实测图 | `python scripts/plot_b05_unified_memory.py` 等；C-01～C-09：`plot_c0N_*.py`。C-10 只画分流图：`plot_c10_checklist.py` |
+| 重画实测图 | `python scripts/plot_b05_unified_memory.py` 等；C-01～C-09：`plot_c0N_*.py`。C-10：`plot_c10_checklist.py`。D-01：`plot_d01_device_reduce.py` |
 | Module B 证据索引（B-10） | [`docs/results/B-10_checklist.md`](docs/results/B-10_checklist.md) |
 | Module C 证据索引（C-10） | [`docs/results/C-10_checklist.md`](docs/results/C-10_checklist.md) |
 | 专栏进度（导航） | [`docs/CUDA专栏规划.md`](docs/CUDA专栏规划.md) |
@@ -48,14 +49,15 @@ AI-System-Performance-Lab/
 ├── examples/          # 章节 .cu（CMake 唯一构建目标）
 │   ├── 01_cuda_basics/
 │   ├── 02_memory_optim/
-│   └── 03_compute_primitives/
+│   ├── 03_compute_primitives/
+│   └── 04_operators/
 ├── docs/              # 规划 + results/
 ├── scripts/           # 绘图 / profile 辅助
 ├── cmake/
 └── CMakeLists.txt
 ```
 
-**当前主线**：Module A ✅；Module B ✅；Module C ✅（C-10 为索引，无新测）。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
+**当前主线**：Module A ✅；Module B ✅；Module C ✅；D-01 ✅。下一章等点名 D-02。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
 
 ## 快速开始 (Windows/Linux)
 
@@ -155,6 +157,7 @@ python scripts/plot_c07_persistent.py
 python scripts/plot_c08_pdl.py
 python scripts/plot_c09_named_barrier.py
 python scripts/plot_c10_checklist.py
+python scripts/plot_d01_device_reduce.py
 ```
 
 ## 专栏映射
@@ -165,7 +168,8 @@ python scripts/plot_c10_checklist.py
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
 | **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | ✅ B-01～B-10 |
 | **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | ✅ C-01～C-10（C-10 无新 `.cu`） |
-| **Module D–E** | 仅规划文档 | ⏳ |
+| **Module D** | `article/04_operators` + `examples/04_operators` | 🟡 算子阶梯；D-01 ✅ |
+| **Module E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。
 

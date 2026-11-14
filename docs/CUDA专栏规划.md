@@ -95,12 +95,9 @@ A 会看会测 → B 会搬数据 → C 会协作与控 launch → D 会写接�
 | 同步分层 | C-04 | 钩子 |
 | Kernel fusion 代价 | C-05 | 钩子 |
 | CUDA Graph / launch 墙 | C-06 | 钩子 |
-| Device Reduce | D-01 | C 不写算子正文 |
-| Softmax | D-02 | 钩子 |
-| LayerNorm / RMSNorm | D-03 | 钩子 |
-| GEMM tiling | D-04 | 钩子 |
-| Tensor Core GEMM | D-05 | 不复刻 CUTLASS |
-| Epilogue 融合 | D-06 | 钩子 |
+| Device Reduce | D-01 | C 不写算子正文。warp reduce 仍在 C-01 |
+| D 其余算子 | [Module-D.md](CUDA专栏大纲/Module-D.md) 章号 | 邻章只留钩子。dtype / 打包宽度、GQA、split-K 是章内的档 |
+| 转置 | B-09 | D 不重开 |
 | pybind / 扩展闭环 | E-01 | 钩子 |
 | 端到端 bench 口径 | E-03 | 不替代章内 median |
 | 框架集成 | E-05 | 不写框架源码课 |
@@ -112,24 +109,24 @@ Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL �
 
 ## 3. 整体布局（已锁定）
 
-五层 Module，每层 10 个槽；导读是第 0 篇，不占槽。
+A / B / C / E 仍是每层 10 个槽。D 覆盖主流算子：**58 个算子 + 1 篇 Checklist**。转置在 B-09，warp reduce 在 C-01。导读是第 0 篇，不占槽。§2 ASCII 仍只标五词，题单在 [Module-D.md](CUDA专栏大纲/Module-D.md)。
 
 | 模块 | 总序 | 路径（落地时） | 收束章 |
 |---|---|---|---|
 | **A** | 1–10 | `article/01_cuda_basic/` · `examples/01_cuda_basics/` | A-10 = Roofline（度量语言终点，不是 Checklist） |
 | **B** | 11–20 | `article/02_memory_optim/` · `examples/02_memory_optim/` | B-10 = Checklist |
 | **C** | 21–30 | `article/03_compute_primitives/` · `examples/03_compute_primitives/` | C-10 = Checklist |
-| **D** | 31–40 | 开写再建 `article/04_*` / `examples/04_*` | D-10 = Checklist |
-| **E** | 41–50 | 开写再建；不提前建空 `python/` | E-10 = Checklist / 专栏收束索引 |
+| **D** | 31–89 | `article/04_operators/` · `examples/04_operators/` | D-59 = Checklist |
+| **E** | 90–99 | 开写再建；不提前建空 `python/` | E-10 = Checklist / 专栏收束索引 |
 
 **槽位纪律**
 
 | 规则 | 说明 |
 |---|---|
-| 前半锁定 | A 全 10 章；B 全 10 章主题；C-01～C-06；D-01～D-06；E-01～E-07 |
-| 后半可裁 | D-07～D-09、E-08～E-09 仍可裁。C-07～C-09 主题已收（persistent / PDL / named barrier），不再当空槽裁掉 |
+| 前半锁定 | A 全 10 章；B 全 10 章主题；C-01～C-06；D 的 58 个算子（D-01～D-58）；E-01～E-07 |
+| 后半可裁 | E-08～E-09 仍可裁。C-07～C-09 主题已收。D 的题目不裁；同一算子的 dtype 副本、GQA、split-K 不另开章 |
 | 新 Module 目录 | 随**首章落地**再建；禁止空 README 占坑 |
-| 编号 | 总序 1–10↔A、11–20↔B、21–30↔C、31–40↔D、41–50↔E |
+| 编号 | 总序 1–10↔A、11–20↔B、21–30↔C、31–89↔D、90–99↔E |
 
 **状态标记**（只这三种）
 
@@ -198,19 +195,27 @@ Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL �
 
 硬边界：不重开访存教程；不算子数值正文（→ D）；Graph 生产叠法 / Torch capture → E。详见 [Module-C.md](CUDA专栏大纲/Module-C.md)。
 
-### 4.4 Module D：算子怎么写到接近库级 ⏳
+### 4.4 Module D：算子阶梯 🟡
 
-> **一句话**：可验证的算子实现（正确性 + Roofline 形状 + 决策表）。  
-> **教法弧**：规约族 D-01～D-03 → 矩阵 D-04/D-05 → epilogue D-06 →（候选）→ 索引 D-10。
+> **一句话**：58 个算子，每题一章，再加 Checklist。覆盖归约、逐点、矩阵、Attention、MoE、训练、强化学习、推理和卷积。  
+> **教法弧**：归约 → 逐点与索引 → 归一化 → 矩阵 → 预填 Attention → 选择与扫描 → 分组 GEMM、低精度与卷积 → 解码 Attention → MoE → 损失与强化学习 → Dropout 与优化器。细则里的区间和章节表一致。  
+> **写法**：一章一个算子。D-22、D-23、D-45 的多档留在章内，不另占号。及格线是本机测到的比例。细则在 [Module-D.md](CUDA专栏大纲/Module-D.md)。
 
 | 总序 | 章 | 主题 |
 |---|---|---|
-| 31–33 | D-01～D-03 | Reduction / Softmax / LN·RMSNorm |
-| 34–36 | D-04～D-06 | Naive GEMM→tiling / TC GEMM 入门 / Epilogue |
-| 37–39 | D-07～D-09 | Attention 微基准 / 量化钩子 / 预留（**可裁**） |
-| 40 | D-10 | Checklist |
+| 31–32 | D-01～D-02 | Reduce ✅ / Dot |
+| 33–44 | D-03～D-14 | Elementwise 到 RoPE，含 Embedding 反传（D-04～D-10 为短章） |
+| 45–48 | D-15～D-18 | Softmax / LayerNorm / RMSNorm / NMS |
+| 49–52 | D-19～D-22 | SGEMV / HGEMV / SGEMM / HGEMM |
+| 53–55 | D-23～D-25 | FlashAttention / Split-D Attention / Merge attention states |
+| 56–59 | D-26～D-29 | ArgMax / TopK / Scan / Radix Sort |
+| 60–63 | D-30～D-33 | SwiGLU / BatchNorm / GroupNorm / Norm 反传 |
+| 64–71 | D-34～D-41 | Grouped GEMM / FP8 / FP4 / W4A16 / Conv / Depthwise / Conv 反传 / Pool |
+| 72–75 | D-42～D-45 | Paged decode / MLA / Reshape-and-cache / Attention 反传 |
+| 76–88 | D-46～D-58 | MoE router、dispatch、combine / Top-p / FP8 quant / Cross entropy / logprob、KL、GAE、策略损失 / Dropout / AdamW / Grid sample |
+| 89 | D-59 | Checklist |
 
-硬边界：CUTLASS/CuTe 只对照，不复刻库文档；生产 FA / vLLM 不做主线。详见 [Module-D.md](CUDA专栏大纲/Module-D.md)。
+硬边界：CUTLASS/CuTe 只作天花板上的一次调用。Triton 不单开。GQA、batched GEMM、split-K 不另开章。D-01 ✅：float，5090 大数组 **1.15×**，贴 CUB。
 
 ### 4.5 Module E：怎么嵌进产品 ⏳
 
@@ -219,12 +224,12 @@ Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL �
 
 | 总序 | 章 | 主题 |
 |---|---|---|
-| 41–42 | E-01～E-02 | pybind11 闭环 / 打包与构建 |
-| 43–44 | E-03～E-04 | 端到端 bench 规范 / NSYS·NCU 工作流 |
-| 45–46 | E-05～E-06 | 框架集成钩子 / 部署形态 |
-| 47 | E-07 | Multi-GPU 钩子（P2P / NCCL 入口） |
-| 48–49 | E-08～E-09 | MPS/MIG、回归门禁（**可裁**） |
-| 50 | E-10 | Checklist / 专栏收束索引 |
+| 90–91 | E-01～E-02 | pybind11 闭环 / 打包与构建 |
+| 92–93 | E-03～E-04 | 端到端 bench 规范 / NSYS·NCU 工作流 |
+| 94–95 | E-05～E-06 | 框架集成钩子 / 部署形态 |
+| 96 | E-07 | Multi-GPU 钩子（P2P / NCCL 入口） |
+| 97–98 | E-08～E-09 | MPS/MIG、回归门禁（**可裁**） |
+| 99 | E-10 | Checklist / 专栏收束索引 |
 
 硬边界：单卡主链（A–D）完整之前，E-07 不阻塞。不提前建空 `python/`。详见 [Module-E.md](CUDA专栏大纲/Module-E.md)。
 
@@ -251,7 +256,7 @@ Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL �
 6. 下一章钩子（GitHub 目录绝对链）
 7. 参考文献池（官方 / 工程 / 实证 / 前沿）
 
-写稿流程：`.cursor/skills/aspl-cuda-article/SKILL.md`。Checklist 章（B-10 / C-10 / D-10 / E-10）无强制新 `.cu`。
+写稿流程：`.cursor/skills/aspl-cuda-article/SKILL.md`。Checklist 章（B-10 / C-10 / D-59 / E-10）无强制新 `.cu`。
 
 **插图**
 
@@ -287,9 +292,9 @@ Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL �
 | A | ✅ | 导读 + A-01～A-10 已收束 |
 | B | ✅ | B-01～B-10 已收口（B-04：hint ~1×，streaming 19.58× 是合并） |
 | C | ✅ | C-01～C-10 已收口（C-10 无新 `.cu`） |
-| D / E | ⏳ | 章表已锁；无代码目录 |
+| D / E | 🟡 / ⏳ | D 题单 58 个算子；D-01 ✅。下一章等用户点名 D-02。E 无代码目录 |
 
-**当前焦点（只一条主线）**：**Module C 已收束于 C-10 Checklist**（症状 → 证据 → 处方；无新测）。D/E 不开写。
+**当前焦点（只一条主线）**：**D-01 已收口**（float，5090 **1.15×**）。下一章等用户点名 D-02。题单见 [Module-D.md](CUDA专栏大纲/Module-D.md)。
 
 ---
 
@@ -299,7 +304,8 @@ Cluster、Blackwell Tensor Memory：邻章一句钩子，不单开主线。PDL �
 
 - Module A：`examples/01_cuda_basics/*.cu`
 - Module B：`examples/02_memory_optim/01_*.cu` … `09_*.cu`（B-10 无新 `.cu`）
-- Module C：`examples/03_compute_primitives/*.cu`
+- Module C：`examples/03_compute_primitives/*.cu`（C-10 无新 `.cu`）
+- Module D：`examples/04_operators/01_device_reduce.cu`
 - 实测摘要：`docs/results/`；Checklist：`B-10_checklist.md`、`C-10_checklist.md`
 
 ### 8.2 脚本与结果

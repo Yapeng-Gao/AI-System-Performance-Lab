@@ -9,7 +9,7 @@
 | [Module-A.md](Module-A.md) | ✅ | 模型 → … → Roofline |
 | [Module-B.md](Module-B.md) | ✅ | 形状 → on-chip → 跨空间 → 引擎 → 布局 → 索引 |
 | [Module-C.md](Module-C.md) | ✅ | 通信 → 争用/同步 → 摊销 launch → 常驻/PDL/named barrier → 索引 |
-| [Module-D.md](Module-D.md) | ⏳ | 规约族 → 矩阵 → epilogue |
+| [Module-D.md](Module-D.md) | 🟡 | 58 个主流算子；D-01 ✅ |
 | [Module-E.md](Module-E.md) | ⏳ | 可调用 → 可测量 → 可交付 → 多卡钩子 |
 
 ## 按章大纲
@@ -37,6 +37,7 @@
 | [C-08_pdl.md](C-08_pdl.md) | ✅ | PDL；5090 定点 1.13×，sweep 贴 1× |
 | [C-09_named_barrier.md](C-09_named_barrier.md) | ✅ | Named barrier；5090 两边相等 1.97×，named_pre 1.007× |
 | [C-10_checklist.md](C-10_checklist.md) | ✅ | Checklist；无新 `.cu`；锚点回 C-01～C-09 |
+| [D-01_device_reduce.md](D-01_device_reduce.md) | ✅ | float；5090 大数组 **1.15×**，贴 CUB |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
 **约定**：新章大纲新建 `A-0N_*` / `B-0N_*` / `C-0N_*.md`，在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  
