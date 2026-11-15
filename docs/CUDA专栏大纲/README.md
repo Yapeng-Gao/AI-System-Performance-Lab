@@ -9,7 +9,7 @@
 | [Module-A.md](Module-A.md) | ✅ | 模型 → … → Roofline |
 | [Module-B.md](Module-B.md) | ✅ | 形状 → on-chip → 跨空间 → 引擎 → 布局 → 索引 |
 | [Module-C.md](Module-C.md) | ✅ | 通信 → 争用/同步 → 摊销 launch → 常驻/PDL/named barrier → 索引 |
-| [Module-D.md](Module-D.md) | 🟡 | 58 个主流算子；D-01～D-03 ✅ |
+| [Module-D.md](Module-D.md) | 🟡 | 58 个主流算子；D-01～D-04 ✅ |
 | [Module-E.md](Module-E.md) | ⏳ | 可调用 → 可测量 → 可交付 → 多卡钩子 |
 
 ## 按章大纲
@@ -40,6 +40,7 @@
 | [D-01_device_reduce.md](D-01_device_reduce.md) | ✅ | 手写达到 CUB；5090 **1.15×** |
 | [D-02_dot.md](D-02_dot.md) | ✅ | 手写达到 cublasSdot |
 | [D-03_elementwise.md](D-03_elementwise.md) | ✅ | 手写达到带宽顶 ~1.55 TB/s |
+| [D-04_sigmoid.md](D-04_sigmoid.md) | ✅ | 短章；~1.50 TB/s 仍贴带宽，未打成算力墙 |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
 **约定**：新章大纲新建 `A-0N_*` / `B-0N_*` / `C-0N_*.md`，在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  

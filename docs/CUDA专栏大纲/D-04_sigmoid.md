@@ -1,0 +1,41 @@
+# D-04 写作大纲：Sigmoid（短章）
+
+> 状态：✅ 已落地。短章。共用 D-03 网格 / block / median；只换函数。  
+> 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-03_elementwise.md`](D-03_elementwise.md)  
+> **定位**：手写一元激活。无官方单算子。对照有效带宽 + 相对 D-03。本机：~1.50 TB/s，**仍贴带宽**，未打成算力墙。
+
+**标题**：`D-04. Sigmoid：手写激活，是否算力墙`
+
+## 边界
+
+| 章 | 已有 | 本章 |
+|---|---|---|
+| D-03 | 两读一写 add，~1.55 TB/s | 一元 `sigmoid`；不重讲 float4 |
+| D-05～D-10 | — | 同 harness，只换公式 |
+| C-05 | 融合 | 本章不融 bias/dropout |
+
+## MVP
+
+- 前向：`y = 1/(1+exp(-x))`。`scalar` / `vec4`。
+- 反传一档：`dx = dy * y * (1-y)`（输入 y 与 dy）。
+- 有效字节：前向 `2*n*4`；反传 `3*n*4`。含 L2。
+- sweep `n=2^16…2^28`。正确性对 host double（rtol 1e-5 量级）。
+- 主看右半段：vec4 有效 GB/s 是否接近 D-03 带宽顶；若明显更低 → 算力墙。
+- 不做：half、库对照、NCU、与 add 同进程内联对比（正文用 D-03 表对照即可）。
+
+主命令：`./bin/04_operators_04_sigmoid --mode sweep`
+
+## 文献
+
+| 层 | 条目 | 用途 |
+|---|---|---|
+| A | CUDA math `expf` / special functions | 特殊函数成本 |
+| B | D-03 本机带宽顶 | 是否掉出带宽墙 |
+| C | 本机 sigmoid GB/s | 判停 |
+
+## 本机结论（已测）
+
+- 正文：[`article/04_operators/D-04. Sigmoid：手写激活，是否算力墙.md`](../../article/04_operators/D-04.%20Sigmoid：手写激活，是否算力墙.md)
+- 结果：[`docs/results/D-04_sigmoid.md`](../results/D-04_sigmoid.md)
+- 大数组前向 vec4 ~**1.50 TB/s**（`2*n*4`），`scalar/vec4`≈1.09× → **仍贴带宽**
+- 反传 `n=2^26` vec4 ~**1543 GB/s**（`3*n*4`）

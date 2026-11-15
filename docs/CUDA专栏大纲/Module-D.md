@@ -1,6 +1,6 @@
 # Module D 大纲：算子题单（31–89）
 
-> 状态：🟡 主流算子题单。**58 个算子**（D-01～D-58）加 Checklist **D-59**。D-01～D-03 ✅。其余未开。  
+> 状态：🟡 主流算子题单。**58 个算子**（D-01～D-58）加 Checklist **D-59**。D-01～D-04 ✅。其余未开。  
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.4 · D-01：[`D-01_device_reduce.md`](D-01_device_reduce.md)
 >
 > dtype 和打包宽度写在同一章的版本表里。D-20 HGEMV 是例外，见下节。Triton / CuTe 对同一算子的另一种实现不单开章。
@@ -154,7 +154,7 @@ D-53、D-55 也是短章。它们是逐元素再加一次归约，只写公式�
 | 31 | **D-01** | Reduce | block all-reduce → device 多 block → 向量化加载。f32 为主，fp8 只作为额外一档 | CUB `DeviceReduce` | ✅ 5090 大数组 **1.15×**，贴 CUB |
 | 32 | **D-02** | Dot | 两向量点积。标量 → 向量化。不写成 GEMV | `cublasSdot`。数值另对 host double | ✅ 5090 大数组 `vec4/cublas`≈1.00；scalar/vec4≈1.02× |
 | 33 | **D-03** | Elementwise | 逐元素加（只测 add）。标量 → `float4`（half2 不做）。vec4 与 scalar 同 CTA 数 | 有效 GB/s | ✅ 5090 大数组 ~1.55 TB/s，`scalar/vec4`≈1.03× |
-| 34 | **D-04** | Sigmoid | 标量 → 向量化。特殊函数的算力是否盖过带宽 | 有效 GB/s 或与 elementwise 的差距 | ⏳ |
+| 34 | **D-04** | Sigmoid | 标量 → 向量化。特殊函数的算力是否盖过带宽 | 有效 GB/s 或与 elementwise 的差距 | ✅ 5090 大数组 ~1.50 TB/s，仍贴带宽；`scalar/vec4`≈1.09× |
 | 35 | **D-05** | ReLU | 标量 → 向量化 | 有效 GB/s | ⏳ |
 | 36 | **D-06** | ELU | 标量 → 向量化 | 有效 GB/s | ⏳ |
 | 37 | **D-07** | GELU | 标量 → 向量化。tanh 近似与 erf 的数值差写明 | host 参考 + 带宽 | ⏳ |
