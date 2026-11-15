@@ -1,6 +1,6 @@
 # Module D 大纲：算子题单（31–89）
 
-> 状态：🟡 主流算子题单。**58 个算子**（D-01～D-58）加 Checklist **D-59**。D-01～D-06 ✅。其余未开。  
+> 状态：🟡 主流算子题单。**58 个算子**（D-01～D-58）加 Checklist **D-59**。D-01～D-07 ✅。其余未开。  
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.4 · D-01：[`D-01_device_reduce.md`](D-01_device_reduce.md)
 >
 > dtype 和打包宽度写在同一章的版本表里。D-20 HGEMV 是例外，见下节。Triton / CuTe 对同一算子的另一种实现不单开章。
@@ -159,7 +159,7 @@ D-53、D-55 也是短章。它们是逐元素再加一次归约，只写公式�
 | 34 | **D-04** | Sigmoid | 标量 → 向量化 → cuDNN Activation。特殊函数是否盖过带宽 | cuDNN + 有效 GB/s | ✅ 5090 `vec4/cudnn`≈**1.01**；~1.50 TB/s |
 | 35 | **D-05** | ReLU | 标量 → 向量化 → cuDNN | cuDNN + 有效 GB/s | ✅ 5090 `vec4/cudnn`≈**1.01**；与 D-04 同墙 |
 | 36 | **D-06** | ELU | 标量 → 向量化 → cuDNN | cuDNN + 有效 GB/s | ✅ 5090 `vec4/cudnn`≈**1.01**；负半轴 exp 未掉出 |
-| 37 | **D-07** | GELU | 标量 → 向量化。tanh 近似与 erf 的数值差写明 | host 参考 + 带宽 | ⏳ |
+| 37 | **D-07** | GELU | 标量 → 向量化。tanh 近似与 erf 的数值差写明。大纲：[`D-07_gelu.md`](D-07_gelu.md) | host 参考 + 带宽（legacy Activation 无 GELU） | ✅ 5090 tanh≈erf≈**1.50 TB/s**；未掉出 |
 | 38 | **D-08** | Swish | 标量 → 向量化 | host 参考 + 带宽 | ⏳ |
 | 39 | **D-09** | HardSwish | 标量 → 向量化 | 有效 GB/s | ⏳ |
 | 40 | **D-10** | HardShrink | 标量 → 向量化 | 有效 GB/s | ⏳ |

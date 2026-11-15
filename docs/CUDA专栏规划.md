@@ -205,7 +205,8 @@ A / B / C / E 仍是每层 10 个槽。D 覆盖主流算子：**58 个算子 + 1
 |---|---|---|
 | 31–33 | D-01～D-03 | 手写达到官方：Reduce / Dot / Elementwise ✅ |
 | 34–36 | D-04～D-06 | Sigmoid / ReLU / ELU 短章 ✅：均 `vec4/cudnn`≈1.01 同墙 |
-| 37–44 | D-07～D-14 | GELU 起至 RoPE，含 Embedding 反传 |
+| 37 | D-07 | GELU 短章 ✅：tanh≈erf≈1.50 TB/s；host+带宽（无 Activation） |
+| 38–44 | D-08～D-14 | Swish 起至 RoPE，含 Embedding 反传 |
 | 45–48 | D-15～D-18 | Softmax / LayerNorm / RMSNorm / NMS |
 | 49–52 | D-19～D-22 | SGEMV / HGEMV / SGEMM / HGEMM |
 | 53–55 | D-23～D-25 | FlashAttention / Split-D Attention / Merge attention states |
@@ -216,7 +217,7 @@ A / B / C / E 仍是每层 10 个槽。D 覆盖主流算子：**58 个算子 + 1
 | 76–88 | D-46～D-58 | MoE router、dispatch、combine / Top-p / FP8 quant / Cross entropy / logprob、KL、GAE、策略损失 / Dropout / AdamW / Grid sample |
 | 89 | D-59 | Checklist |
 
-硬边界：CUTLASS/CuTe 只作天花板上的一次调用。Triton 不单开。GQA、batched GEMM、split-K 不另开章。D-01～D-03 ✅：手写达到 CUB / cublasSdot / 带宽顶。D-04～D-06 ✅：`vec4/cudnn`≈1.01 同墙。
+硬边界：CUTLASS/CuTe 只作天花板上的一次调用。Triton 不单开。GQA、batched GEMM、split-K 不另开章。D-01～D-03 ✅：手写达到 CUB / cublasSdot / 带宽顶。D-04～D-07 ✅：短章同墙（D-07 无 Activation，host+带宽）。
 
 ### 4.5 Module E：怎么嵌进产品 ⏳
 
@@ -297,9 +298,9 @@ A / B / C / E 与 Module D **不是同一套目录**。写稿流程仍走 `.curs
 | A | ✅ | 导读 + A-01～A-10 已收束 |
 | B | ✅ | B-01～B-10 已收口（B-04：hint ~1×，streaming 19.58× 是合并） |
 | C | ✅ | C-01～C-10 已收口（C-10 无新 `.cu`） |
-| D / E | 🟡 / ⏳ | D 题单 58 个算子；D-01～D-06 ✅。下一章等用户点名 D-07。E 无代码目录 |
+| D / E | 🟡 / ⏳ | D 题单 58 个算子；D-01～D-07 ✅。E 无代码目录 |
 
-**当前焦点（只一条主线）**：**D-06 已收口**（`vec4/cudnn`≈1.01；负半轴 exp 未掉出）。下一章等用户点名 D-07。题单见 [Module-D.md](CUDA专栏大纲/Module-D.md)。
+**当前焦点（只一条主线）**：**D-08 Swish**（下一短章）。D-01～D-07 ✅。题单见 [Module-D.md](CUDA专栏大纲/Module-D.md)。
 
 ---
 

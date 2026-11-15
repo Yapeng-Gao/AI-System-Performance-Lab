@@ -27,6 +27,7 @@
 | D-04 Sigmoid | 短章；手写**达到** cuDNN（`vec4/cudnn`≈**1.01**）；~**1.50 TB/s** |
 | D-05 ReLU | 短章；`vec4/cudnn`≈**1.01**；与 D-04 同墙 |
 | D-06 ELU | 短章；`vec4/cudnn`≈**1.01**；负半轴 exp 未掉出 |
+| D-07 GELU | 短章；tanh≈erf≈**1.50 TB/s**；host+带宽（无 Activation） |
 | C-05 Fusion | 瘦融合随链长 **3.9×→9.8×**；`fat` occupancy 6→1，相对瘦融合慢 **8×** |
 | C-04 Sync | `grid/block` ≈ **17×**；`phases`≈1（少 sync ≠ 自动更快） |
 
@@ -42,7 +43,7 @@
 | 读文章 | `article/01_cuda_basic/`、`article/02_memory_optim/`、`article/03_compute_primitives/`、`article/04_operators/` |
 | 跑章节实验 | `examples/01_cuda_basics/`、`examples/02_memory_optim/`、`examples/03_compute_primitives/`、`examples/04_operators/` |
 | 看实测与 CSV | `docs/results/` |
-| 重画实测图 | `python scripts/plot_b05_unified_memory.py` 等；C-01～C-09：`plot_c0N_*.py`。C-10：`plot_c10_checklist.py`。D-01～D-06：`plot_d0N_*.py` |
+| 重画实测图 | `python scripts/plot_b05_unified_memory.py` 等；C-01～C-09：`plot_c0N_*.py`。C-10：`plot_c10_checklist.py`。D-01～D-07：`plot_d0N_*.py` |
 | Module B 证据索引（B-10） | [`docs/results/B-10_checklist.md`](docs/results/B-10_checklist.md) |
 | Module C 证据索引（C-10） | [`docs/results/C-10_checklist.md`](docs/results/C-10_checklist.md) |
 | 专栏进度（导航） | [`docs/CUDA专栏规划.md`](docs/CUDA专栏规划.md) |
@@ -62,7 +63,7 @@ AI-System-Performance-Lab/
 └── CMakeLists.txt
 ```
 
-**当前主线**：Module A ✅；Module B ✅；Module C ✅；D-01～D-06 ✅。下一章等点名 D-07。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
+**当前主线**：Module A ✅；Module B ✅；Module C ✅；D-01～D-07 ✅。下一章等点名 D-08。结构说明见 [`docs/仓库架构与现状.md`](docs/仓库架构与现状.md)。
 
 ## 快速开始 (Windows/Linux)
 
@@ -173,7 +174,7 @@ python scripts/plot_d01_device_reduce.py
 | **Module A** | `article/01_cuda_basic` + `examples/01_cuda_basics` | ✅ |
 | **Module B** | `article/02_memory_optim` + `examples/02_memory_optim` | ✅ B-01～B-10 |
 | **Module C** | `article/03_compute_primitives` + `examples/03_compute_primitives` | ✅ C-01～C-10（C-10 无新 `.cu`） |
-| **Module D** | `article/04_operators` + `examples/04_operators` | 🟡 手写算子（达到/超过官方）；D-01～D-06 ✅ |
+| **Module D** | `article/04_operators` + `examples/04_operators` | 🟡 手写算子（达到/超过官方）；D-01～D-07 ✅ |
 | **Module E** | 仅规划文档 | ⏳ |
 
 正文插图：原理短 ASCII，实测 matplotlib（见架构文档 §4）。
