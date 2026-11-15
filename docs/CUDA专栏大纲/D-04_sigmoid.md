@@ -22,6 +22,7 @@
 - sweep `n=2^16…2^28`。正确性对 host double（rtol 1e-5 量级）。
 - 主看右半段：vec4 有效 GB/s 是否接近 D-03 带宽顶；若明显更低 → 算力墙。
 - 官方：`cudnnActivationForward/Backward`（SIGMOID）。handle/desc 在计时外。
+- 正文须有「实现思路与代码」：`act_f` + fwd/bwd + `cudnnActivation*` 计时边界。
 - 不做：half、NCU、与 add 同进程内联对比。
 
 主命令：`./bin/04_operators_04_sigmoid --mode sweep`

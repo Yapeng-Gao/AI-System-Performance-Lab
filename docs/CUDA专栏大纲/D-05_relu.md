@@ -2,7 +2,7 @@
 
 > 状态：✅ 已落地。短章。共用 D-03 网格 / block / median；只换函数。  
 > 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-04_sigmoid.md`](D-04_sigmoid.md)  
-> **定位**：手写一元激活。官方对照 **cuDNN Activation**。本机：`vec4/cudnn`≈**1.01**；与 D-04 同墙。薄写。
+> **定位**：手写一元激活。官方对照 **cuDNN Activation**。本机：`vec4/cudnn`≈**1.01**；与 D-04 同墙。须有「实现思路与代码」。
 
 **标题**：`D-05. ReLU：更轻激活，是否更贴带宽`
 
@@ -22,7 +22,7 @@
 - sweep `n=2^16…2^28`。正确性对 host。
 - 主看右半段；两流 GB/s 对 D-03 虚线只作量级；同尺锁反传三流。
 - 官方：`cudnnActivation*`（RELU）。
-- 不做：half、NCU、重讲 float4。贴顶则正文更薄。
+- 不做：half、NCU、重讲 float4。贴顶可瘦数字，不可省方案与 `.cu` 挂钩。
 
 主命令：`./bin/04_operators_05_relu --mode sweep`
 

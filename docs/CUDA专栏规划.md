@@ -204,8 +204,8 @@ A / B / C / E 仍是每层 10 个槽。D 覆盖主流算子：**58 个算子 + 1
 | 总序 | 章 | 主题 |
 |---|---|---|
 | 31–33 | D-01～D-03 | 手写达到官方：Reduce / Dot / Elementwise ✅ |
-| 34–35 | D-04～D-05 | Sigmoid / ReLU 短章 ✅：均 ~1.50 TB/s 同墙 |
-| 36–44 | D-06～D-14 | 其余激活短章到 RoPE，含 Embedding 反传 |
+| 34–36 | D-04～D-06 | Sigmoid / ReLU / ELU 短章 ✅：均 `vec4/cudnn`≈1.01 同墙 |
+| 37–44 | D-07～D-14 | GELU 起至 RoPE，含 Embedding 反传 |
 | 45–48 | D-15～D-18 | Softmax / LayerNorm / RMSNorm / NMS |
 | 49–52 | D-19～D-22 | SGEMV / HGEMV / SGEMM / HGEMM |
 | 53–55 | D-23～D-25 | FlashAttention / Split-D Attention / Merge attention states |
@@ -216,7 +216,7 @@ A / B / C / E 仍是每层 10 个槽。D 覆盖主流算子：**58 个算子 + 1
 | 76–88 | D-46～D-58 | MoE router、dispatch、combine / Top-p / FP8 quant / Cross entropy / logprob、KL、GAE、策略损失 / Dropout / AdamW / Grid sample |
 | 89 | D-59 | Checklist |
 
-硬边界：CUTLASS/CuTe 只作天花板上的一次调用。Triton 不单开。GQA、batched GEMM、split-K 不另开章。D-01～D-03 ✅：手写达到 CUB / cublasSdot / 带宽顶。D-04～D-05 ✅：~1.50 TB/s 同墙。
+硬边界：CUTLASS/CuTe 只作天花板上的一次调用。Triton 不单开。GQA、batched GEMM、split-K 不另开章。D-01～D-03 ✅：手写达到 CUB / cublasSdot / 带宽顶。D-04～D-06 ✅：`vec4/cudnn`≈1.01 同墙。
 
 ### 4.5 Module E：怎么嵌进产品 ⏳
 
@@ -251,13 +251,14 @@ A / B / C / E 与 Module D **不是同一套目录**。写稿流程仍走 `.curs
 1. **TL;DR**（本机数 + 判停；含相对库或相对上一档）
 2. **定义与形状**（输入/输出/有效字节；和邻章算子差在哪）
 3. **版本表**（每档做什么；正确性口径写在表下）
-4. **本机数字与判停**（主命令一条；右半段表 + 图；贴库或带宽不再抬就停）
-5. **生产建议**（调哪一个库 / 何时手写；高频误区可并进本表）
-6. **下一算子** + 文末 CTA + **参考文献**
+4. **实现思路与代码**（逻辑链 → 方案阶梯 → `.cu` 挂钩 → 读数口径）
+5. **本机数字与判停**（主命令一条；右半段表 + 图；贴库或带宽不再抬就停）
+6. **生产建议**（调哪一个库 / 何时手写；高频误区可并进本表）
+7. **下一算子** + 文末 CTA + **参考文献**
 
 **定位**：手写算子；达到官方=达标，超过=进取。D-01～D-03 开篇写明「先练达到」。见 [Module-D.md](CUDA专栏大纲/Module-D.md)「D 怎么定位」。
 
-短章（D-04～D-10）：公式 → 相对 D-03 带宽一句 → 是否算力墙 → 下一章。不套满算子卡六节。
+短章（D-04～D-10）：公式 → **实现思路与代码**（换什么 / 复用什么 / `.cu` 挂钩）→ 相对 D-03 带宽与 `vec4/cudnn` → 是否算力墙 → 下一章。可瘦数字与误区表，不可瘦方案与代码。
 
 配图口径见 [Module-D.md](CUDA专栏大纲/Module-D.md)「算子卡与配图」。
 
@@ -296,9 +297,9 @@ A / B / C / E 与 Module D **不是同一套目录**。写稿流程仍走 `.curs
 | A | ✅ | 导读 + A-01～A-10 已收束 |
 | B | ✅ | B-01～B-10 已收口（B-04：hint ~1×，streaming 19.58× 是合并） |
 | C | ✅ | C-01～C-10 已收口（C-10 无新 `.cu`） |
-| D / E | 🟡 / ⏳ | D 题单 58 个算子；D-01～D-05 ✅。下一章等用户点名 D-06。E 无代码目录 |
+| D / E | 🟡 / ⏳ | D 题单 58 个算子；D-01～D-06 ✅。下一章等用户点名 D-07。E 无代码目录 |
 
-**当前焦点（只一条主线）**：**D-05 已收口**（~1.50 TB/s，与 D-04 同墙）。下一章等用户点名 D-06。题单见 [Module-D.md](CUDA专栏大纲/Module-D.md)。
+**当前焦点（只一条主线）**：**D-06 已收口**（`vec4/cudnn`≈1.01；负半轴 exp 未掉出）。下一章等用户点名 D-07。题单见 [Module-D.md](CUDA专栏大纲/Module-D.md)。
 
 ---
 
