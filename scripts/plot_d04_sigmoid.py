@@ -65,16 +65,18 @@ def draw_cover() -> None:
 
 
 def draw_bw() -> None:
-    ns, gb = [], []
+    ns, gb, cudnn = [], [], []
     with SWEEP_CSV.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
             ns.append(int(row["n"]))
             gb.append(float(row["vec4_GBps"]))
+            cudnn.append(float(row["cudnn_GBps"]))
     x = np.asarray(ns, dtype=float)
     fig, ax = plt.subplots(figsize=(8.5, 4.8), facecolor=BG)
     _style(ax)
-    ax.plot(x, gb, "s-", color=AMBER, lw=2, ms=7, label="sigmoid vec4 GB/s")
-    ax.axhline(1550, color=CYAN, ls="--", lw=1.2, alpha=0.8, label="D-03 ~1.55 TB/s")
+    ax.plot(x, gb, "s-", color=AMBER, lw=2, ms=7, label="hand vec4 GB/s")
+    ax.plot(x, cudnn, "o--", color=CYAN, lw=1.6, ms=6, label="cuDNN GB/s")
+    ax.axhline(1550, color=MUTED, ls=":", lw=1.0, alpha=0.7, label="D-03 ~1.55 TB/s")
     ax.axvline(2**26, color=MUTED, ls="--", lw=1.0, alpha=0.6)
     ax.set_xscale("log", base=2)
     ax.set_xlabel("n (float elements)")

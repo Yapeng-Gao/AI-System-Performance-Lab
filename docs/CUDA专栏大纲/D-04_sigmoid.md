@@ -2,7 +2,7 @@
 
 > 状态：✅ 已落地。短章。共用 D-03 网格 / block / median；只换函数。  
 > 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-03_elementwise.md`](D-03_elementwise.md)  
-> **定位**：手写一元激活。无官方单算子。对照有效带宽 + 相对 D-03。本机：~1.50 TB/s，**仍贴带宽**，未打成算力墙。
+> **定位**：手写一元激活。官方对照 **cuDNN Activation**；兼对照带宽。本机：`vec4/cudnn`≈**1.01**，~1.50 TB/s。
 
 **标题**：`D-04. Sigmoid：手写激活，是否算力墙`
 
@@ -21,7 +21,8 @@
 - 有效字节：前向 `2*n*4`；反传 `3*n*4`。含 L2。
 - sweep `n=2^16…2^28`。正确性对 host double（rtol 1e-5 量级）。
 - 主看右半段：vec4 有效 GB/s 是否接近 D-03 带宽顶；若明显更低 → 算力墙。
-- 不做：half、库对照、NCU、与 add 同进程内联对比（正文用 D-03 表对照即可）。
+- 官方：`cudnnActivationForward/Backward`（SIGMOID）。handle/desc 在计时外。
+- 不做：half、NCU、与 add 同进程内联对比。
 
 主命令：`./bin/04_operators_04_sigmoid --mode sweep`
 
@@ -37,5 +38,5 @@
 
 - 正文：[`article/04_operators/D-04. Sigmoid：手写激活，是否算力墙.md`](../../article/04_operators/D-04.%20Sigmoid：手写激活，是否算力墙.md)
 - 结果：[`docs/results/D-04_sigmoid.md`](../results/D-04_sigmoid.md)
-- 大数组前向 vec4 ~**1.50 TB/s**（`2*n*4`），`scalar/vec4`≈1.09× → **仍贴带宽**
-- 反传 `n=2^26` vec4 ~**1543 GB/s**（`3*n*4`）
+- 大数组 `vec4/cudnn`≈**1.01**（达到）；前向 ~**1.50 TB/s**
+- 反传 `n=2^26`：`vec4/cudnn`≈**1.014**

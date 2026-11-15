@@ -1,6 +1,6 @@
 # Module D 大纲：算子题单（31–89）
 
-> 状态：🟡 主流算子题单。**58 个算子**（D-01～D-58）加 Checklist **D-59**。D-01～D-04 ✅。其余未开。  
+> 状态：🟡 主流算子题单。**58 个算子**（D-01～D-58）加 Checklist **D-59**。D-01～D-05 ✅。其余未开。  
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) §2 全景 · §4.4 · D-01：[`D-01_device_reduce.md`](D-01_device_reduce.md)
 >
 > dtype 和打包宽度写在同一章的版本表里。D-20 HGEMV 是例外，见下节。Triton / CuTe 对同一算子的另一种实现不单开章。
@@ -89,7 +89,7 @@ D-22、D-23、D-45 的档都写在同一章里。正文可以分成上、下两�
 
 ## 短章
 
-D-04～D-10 共用 D-03 的网格、block、字节数和 median，只换函数。正文写公式、相对 D-03 的带宽，以及特殊函数有没有把算子打成算力瓶颈。向量化加载不在这七章重讲。这七章和 D-30 各加一档反传：输入是前向激活和上游梯度，输出是对输入的梯度。网格仍共用 D-03。不因为反传再开章。
+D-04～D-10 共用 D-03 的网格、block、字节数和 median，只换函数；官方对照加一列 **cuDNN Activation**（需要本机 `CUDNN_ROOT`）。正文写公式、`vec4/cudnn`、相对 D-03 的带宽，以及特殊函数有没有把算子打成算力瓶颈。向量化加载不在这七章重讲。这七章和 D-30 各加一档反传：输入是前向激活和上游梯度，输出是对输入的梯度。网格仍共用 D-03。不因为反传再开章。
 
 D-53、D-55 也是短章。它们是逐元素再加一次归约，只写公式和 mask。归约回 D-01，组内均值方差不在这两章重算。D-52、D-54 是完整章。
 
@@ -105,9 +105,9 @@ D-53、D-55 也是短章。它们是逐元素再加一次归约，只写公式�
 |---|---|---|
 | CUB（CCCL） | D-01 Reduce、D-11 Histogram、D-26 ArgMax、D-28 Scan、D-29 Radix Sort | `DeviceReduce` / `DeviceHistogram` / `DeviceScan` / `DeviceRadixSort`。ArgMax 用 `DeviceReduce` 的 ArgMax。D-27 TopK 的库对照是先排序再取前 k，不假设存在单独的 TopK API |
 | cuBLAS / cuBLASLt | D-02 Dot、D-19 SGEMV、D-20 HGEMV、D-21 SGEMM、D-22 HGEMM、D-34 Grouped GEMM、D-35 FP8 GEMM、D-36 FP4 GEMM | `cublasSdot` / `cublasSgemv` / `cublasLtMatmul` / grouped。GEMM 章以 `cublasLtMatmul` 为天花板。章里写明 compute type：FP32 严格算，还是允许 TF32 |
-| cuDNN | D-15 Softmax、D-16 LayerNorm、D-31 BatchNorm、D-41 Pool、D-23 的稠密预填、D-56 Dropout 的时间列 | 前向用对应描述符。算法写明是 heuristic 还是 benchmark。D-23 只在 QKV 是一块稠密块时和 SDPA 比。D-38 的必做对照是 im2col 加 D-21，cuDNN 是加列，没有不挡成章。D-17 RMSNorm 有对应描述符就加一列 cuDNN。D-56 的正确性对 CPU 同一种子，不对 cuDNN 的随机数 |
+| cuDNN | D-04～D-10 激活（`cudnnActivation*`）、D-15 Softmax、D-16 LayerNorm、D-31 BatchNorm、D-41 Pool、D-23 的稠密预填、D-56 Dropout 的时间列 | 激活用 `cudnnActivationForward/Backward`（或等价 Pointwise）。其余前向用对应描述符。算法写明是 heuristic 还是 benchmark。D-23 只在 QKV 是一块稠密块时和 SDPA 比。D-38 的必做对照是 im2col 加 D-21，cuDNN 是加列，没有不挡成章。D-17 RMSNorm 有对应描述符时加一列。D-56 的正确性对 CPU 同一种子，不对 cuDNN 的随机数 |
 
-这三家之外的题，正确性对 host（double 或逐元素参考），速度只和自己的上一档比。容易被当成有官方单算子的，格子里写「无官方单算子」：D-12 Embedding、D-13 Embedding 反传、D-14 RoPE、D-30 SwiGLU、D-37 W4A16、D-42 分页解码、D-43 MLA、D-44 写页、D-46～D-48 的 router / dispatch / combine、D-49 Top-p、D-52～D-55 的 logprob / KL / GAE / 策略损失。W4A16 的库对照是先把 int4 展开成 f16，再调一次 HGEMM，不把这个展开后的 GEMM 当成同一种核。逐点激活、卷积反传、AdamW、Grid sample 同样没有官方单算子，天花板写 host 或带宽。
+这三家之外的题，正确性对 host（double 或逐元素参考），速度只和自己的上一档比。容易被当成有官方单算子的，格子里写「无官方单算子」：D-12 Embedding、D-13 Embedding 反传、D-14 RoPE、D-30 SwiGLU、D-37 W4A16、D-42 分页解码、D-43 MLA、D-44 写页、D-46～D-48 的 router / dispatch / combine、D-49 Top-p、D-52～D-55 的 logprob / KL / GAE / 策略损失。W4A16 的库对照是先把 int4 展开成 f16，再调一次 HGEMM，不把这个展开后的 GEMM 当成同一种核。卷积反传、AdamW、Grid sample 同样没有官方单算子，天花板写 host 或带宽。**逐点激活**的库对照是 cuDNN Activation（不是 CUB/cuBLAS）；大数组上常见结局仍是贴带宽。
 
 计时和手写核用同一套：
 
@@ -154,8 +154,8 @@ D-53、D-55 也是短章。它们是逐元素再加一次归约，只写公式�
 | 31 | **D-01** | Reduce | block all-reduce → device 多 block → 向量化加载。f32 为主，fp8 只作为额外一档 | CUB `DeviceReduce` | ✅ 5090 大数组 **1.15×**，贴 CUB |
 | 32 | **D-02** | Dot | 两向量点积。标量 → 向量化。不写成 GEMV | `cublasSdot`。数值另对 host double | ✅ 5090 大数组 `vec4/cublas`≈1.00；scalar/vec4≈1.02× |
 | 33 | **D-03** | Elementwise | 逐元素加（只测 add）。标量 → `float4`（half2 不做）。vec4 与 scalar 同 CTA 数 | 有效 GB/s | ✅ 5090 大数组 ~1.55 TB/s，`scalar/vec4`≈1.03× |
-| 34 | **D-04** | Sigmoid | 标量 → 向量化。特殊函数的算力是否盖过带宽 | 有效 GB/s 或与 elementwise 的差距 | ✅ 5090 大数组 ~1.50 TB/s，仍贴带宽；`scalar/vec4`≈1.09× |
-| 35 | **D-05** | ReLU | 标量 → 向量化 | 有效 GB/s | ⏳ |
+| 34 | **D-04** | Sigmoid | 标量 → 向量化 → cuDNN Activation。特殊函数是否盖过带宽 | cuDNN + 有效 GB/s | ✅ 5090 `vec4/cudnn`≈**1.01**；~1.50 TB/s |
+| 35 | **D-05** | ReLU | 标量 → 向量化 → cuDNN | cuDNN + 有效 GB/s | ✅ 5090 `vec4/cudnn`≈**1.01**；与 D-04 同墙 |
 | 36 | **D-06** | ELU | 标量 → 向量化 | 有效 GB/s | ⏳ |
 | 37 | **D-07** | GELU | 标量 → 向量化。tanh 近似与 erf 的数值差写明 | host 参考 + 带宽 | ⏳ |
 | 38 | **D-08** | Swish | 标量 → 向量化 | host 参考 + 带宽 | ⏳ |

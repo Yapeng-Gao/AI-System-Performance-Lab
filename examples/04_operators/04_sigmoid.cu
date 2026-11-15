@@ -7,12 +7,13 @@
  * x[i] = ((i & 255) / 255.f) * 8.f - 4.f   // [-4, 4]
  * n 是 256 的倍数。
  *
- *   scalar / vec4 / sweep / modes / bwd
+ *   scalar / vec4 / cudnn / sweep / modes / bwd
  *
- * 有效字节：前向 2*n*4；反传 3*n*4。无官方单算子。主证据：CUDA event median。
+ * 有效字节：前向 2*n*4；反传 3*n*4。官方对照：cuDNN Activation（handle/desc 在计时外）。
  * 网格 / block 口径同 D-03；不重讲向量化。
  */
 
+#include <cudnn.h>
 #include <cuda_runtime.h>
 
 #include <algorithm>
@@ -32,12 +33,23 @@
     }                                                                            \
   } while (0)
 
-enum class Mode { Scalar = 0, Vec4 = 1, Sweep = 2, Modes = 3, Bwd = 4 };
+#define CUDNN_CHECK(call)                                                        \
+  do {                                                                           \
+    cudnnStatus_t st__ = (call);                                                 \
+    if (st__ != CUDNN_STATUS_SUCCESS) {                                          \
+      std::fprintf(stderr, "cuDNN Error: %s (%d) at %s:%d\n",                   \
+                   cudnnGetErrorString(st__), (int)st__, __FILE__, __LINE__);   \
+      std::exit(EXIT_FAILURE);                                                   \
+    }                                                                            \
+  } while (0)
+
+enum class Mode { Scalar = 0, Vec4 = 1, Cudnn = 2, Sweep = 3, Modes = 4, Bwd = 5 };
 
 static const char* mode_name(Mode m) {
   switch (m) {
     case Mode::Scalar: return "scalar";
     case Mode::Vec4: return "vec4";
+    case Mode::Cudnn: return "cudnn";
     case Mode::Sweep: return "sweep";
     case Mode::Modes: return "modes";
     case Mode::Bwd: return "bwd";
@@ -48,10 +60,11 @@ static const char* mode_name(Mode m) {
 static Mode parse_mode(const char* s) {
   if (std::strcmp(s, "scalar") == 0) return Mode::Scalar;
   if (std::strcmp(s, "vec4") == 0) return Mode::Vec4;
+  if (std::strcmp(s, "cudnn") == 0) return Mode::Cudnn;
   if (std::strcmp(s, "sweep") == 0) return Mode::Sweep;
   if (std::strcmp(s, "modes") == 0) return Mode::Modes;
   if (std::strcmp(s, "bwd") == 0) return Mode::Bwd;
-  std::fprintf(stderr, "Invalid --mode=%s (expected scalar|vec4|sweep|modes|bwd)\n", s);
+  std::fprintf(stderr, "Invalid --mode=%s (expected scalar|vec4|cudnn|sweep|modes|bwd)\n", s);
   std::exit(EXIT_FAILURE);
 }
 
@@ -68,7 +81,7 @@ struct BenchConfig {
 
 static void print_usage(const char* prog) {
   std::printf(
-      "Usage: %s --mode <scalar|vec4|sweep|modes|bwd> [options]\n"
+      "Usage: %s --mode <scalar|vec4|cudnn|sweep|modes|bwd> [options]\n"
       "  --n <elems>      multiple of 256 (default 1<<24)\n"
       "  --block <thr>    default 256\n"
       "  --grid <blocks>  default 0 = min(SMs*8, tiles)\n"
@@ -126,7 +139,7 @@ static __host__ __device__ __forceinline__ float x_at(int i) {
   return (static_cast<float>(i & 255) / 255.f) * 8.f - 4.f;
 }
 
-static __host__ __device__ __forceinline__ float sigmoid_f(float x) {
+static __host__ __device__ __forceinline__ float act_f(float x) {
   return 1.f / (1.f + expf(-x));
 }
 
@@ -142,7 +155,7 @@ __global__ void kernel_fill_ones(float* p, int n) {
 
 __global__ void kernel_fwd_scalar(const float* x, float* y, int n) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-    y[i] = sigmoid_f(x[i]);
+    y[i] = act_f(x[i]);
   }
 }
 
@@ -152,7 +165,7 @@ __global__ void kernel_fwd_vec4(const float* x, float* y, int n) {
   float4* y4 = reinterpret_cast<float4*>(y);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n4; i += blockDim.x * gridDim.x) {
     const float4 a = x4[i];
-    y4[i] = make_float4(sigmoid_f(a.x), sigmoid_f(a.y), sigmoid_f(a.z), sigmoid_f(a.w));
+    y4[i] = make_float4(act_f(a.x), act_f(a.y), act_f(a.z), act_f(a.w));
   }
 }
 
@@ -183,13 +196,11 @@ static int choose_grid(int sm, int n, int block, int requested) {
   return std::min(cap, tiles);
 }
 
-// Forward: 1 read + 1 write.
 static double fwd_gbps(int n, float ms) {
   if (ms <= 0.f) return 0.0;
   return (double)n * 8.0 / (double)ms * 1e-6;
 }
 
-// Backward: read y, read dy, write dx.
 static double bwd_gbps(int n, float ms) {
   if (ms <= 0.f) return 0.0;
   return (double)n * 12.0 / (double)ms * 1e-6;
@@ -205,6 +216,34 @@ struct Buffers {
   int block = 256;
   cudaStream_t stream = nullptr;
 };
+
+struct CudnnAct {
+  cudnnHandle_t handle = nullptr;
+  cudnnTensorDescriptor_t desc = nullptr;
+  cudnnActivationDescriptor_t act = nullptr;
+};
+
+static void cudnn_init(CudnnAct& c, cudaStream_t stream) {
+  CUDNN_CHECK(cudnnCreate(&c.handle));
+  CUDNN_CHECK(cudnnSetStream(c.handle, stream));
+  CUDNN_CHECK(cudnnCreateTensorDescriptor(&c.desc));
+  CUDNN_CHECK(cudnnCreateActivationDescriptor(&c.act));
+  CUDNN_CHECK(cudnnSetActivationDescriptor(c.act, CUDNN_ACTIVATION_SIGMOID, CUDNN_PROPAGATE_NAN, 0.0));
+}
+
+static void cudnn_set_n(CudnnAct& c, int n) {
+  // NCHW: treat length-n vector as N=n,C=1,H=1,W=1
+  CUDNN_CHECK(cudnnSetTensor4dDescriptor(c.desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, 1, 1, 1));
+}
+
+static void cudnn_destroy(CudnnAct& c) {
+  if (c.act) cudnnDestroyActivationDescriptor(c.act);
+  if (c.desc) cudnnDestroyTensorDescriptor(c.desc);
+  if (c.handle) cudnnDestroy(c.handle);
+  c.act = nullptr;
+  c.desc = nullptr;
+  c.handle = nullptr;
+}
 
 static void alloc_buffers(Buffers& b, int n, int grid, int block, cudaStream_t stream) {
   b.n = n;
@@ -256,9 +295,9 @@ static void check_bwd(Buffers& b, const char* tag) {
     float y = 0.f, dx = 0.f;
     CUDA_CHECK(cudaMemcpy(&y, b.y + i, sizeof(float), cudaMemcpyDeviceToHost));
     CUDA_CHECK(cudaMemcpy(&dx, b.dx + i, sizeof(float), cudaMemcpyDeviceToHost));
-    const double expect = static_cast<double>(y) * (1.0 - static_cast<double>(y));  // dy=1
-    const double rel = std::abs(dx - expect) / std::max(1e-12, std::abs(expect));
-    if (rel > 1e-5) {
+    const double expect = static_cast<double>(y) * (1.0 - static_cast<double>(y));
+    const double rel = std::abs(dx - expect) / std::max(1e-12, std::abs(expect) < 1e-12 ? 1.0 : std::abs(expect));
+    if (!(expect == 0.0 && dx == 0.f) && rel > 1e-5 && std::abs(dx - expect) > 1e-6) {
       std::fprintf(stderr, "VERIFY FAIL %s bwd i=%d: got %g expect %g rel=%.3e\n", tag, i, dx,
                    expect, rel);
       std::exit(EXIT_FAILURE);
@@ -304,6 +343,16 @@ static float time_fwd_vec4(Buffers& b, int runs, int warmup) {
   return ms;
 }
 
+static float time_fwd_cudnn(Buffers& b, CudnnAct& c, int runs, int warmup) {
+  cudnn_set_n(c, b.n);
+  const float alpha = 1.f, beta = 0.f;
+  const float ms = time_median(b, runs, warmup, [&] {
+    CUDNN_CHECK(cudnnActivationForward(c.handle, c.act, &alpha, c.desc, b.x, &beta, c.desc, b.y));
+  });
+  check_fwd(b, "cudnn");
+  return ms;
+}
+
 static void prepare_y(Buffers& b) {
   kernel_fwd_vec4<<<b.grid, b.block, 0, b.stream>>>(b.x, b.y, b.n);
   CUDA_CHECK(cudaGetLastError());
@@ -328,23 +377,38 @@ static float time_bwd_vec4(Buffers& b, int runs, int warmup) {
   return ms;
 }
 
+static float time_bwd_cudnn(Buffers& b, CudnnAct& c, int runs, int warmup) {
+  prepare_y(b);
+  cudnn_set_n(c, b.n);
+  const float alpha = 1.f, beta = 0.f;
+  const float ms = time_median(b, runs, warmup, [&] {
+    CUDNN_CHECK(cudnnActivationBackward(c.handle, c.act, &alpha, c.desc, b.y, c.desc, b.dy, c.desc,
+                                        b.x, &beta, c.desc, b.dx));
+  });
+  check_bwd(b, "bwd_cudnn");
+  return ms;
+}
+
 static void warn_if_tiny(float ms) {
   if (ms < 0.05f) std::fprintf(stderr, "WARN: median %.4f ms < 0.05 ms; raise --n\n", ms);
 }
 
 struct FwdRow {
-  float scalar = 0.f, vec4 = 0.f;
+  float scalar = 0.f, vec4 = 0.f, cudnn = 0.f;
 };
 
 static void print_fwd(int n, const FwdRow& r, bool csv_only) {
   const double sp = r.scalar / r.vec4;
+  const double vc = r.vec4 / r.cudnn;
   if (!csv_only) {
     std::printf(
-        "n=%d scalar=%.4f ms (%.1f GB/s) vec4=%.4f ms (%.1f GB/s) scalar/vec4=%.3f\n", n, r.scalar,
-        fwd_gbps(n, r.scalar), r.vec4, fwd_gbps(n, r.vec4), sp);
+        "n=%d scalar=%.4f ms (%.1f GB/s) vec4=%.4f ms (%.1f GB/s) cudnn=%.4f ms (%.1f GB/s) "
+        "scalar/vec4=%.3f vec4/cudnn=%.3f\n",
+        n, r.scalar, fwd_gbps(n, r.scalar), r.vec4, fwd_gbps(n, r.vec4), r.cudnn, fwd_gbps(n, r.cudnn),
+        sp, vc);
   }
-  std::printf("SWEEP,%d,%.4f,%.4f,%.4f,%.1f,%.1f\n", n, r.scalar, r.vec4, sp, fwd_gbps(n, r.scalar),
-              fwd_gbps(n, r.vec4));
+  std::printf("SWEEP,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.1f,%.1f,%.1f\n", n, r.scalar, r.vec4, r.cudnn, sp,
+              vc, fwd_gbps(n, r.scalar), fwd_gbps(n, r.vec4), fwd_gbps(n, r.cudnn));
   warn_if_tiny(r.vec4);
 }
 
@@ -357,12 +421,15 @@ int main(int argc, char** argv) {
 
   if (!cfg.csv_only) {
     std::printf("GPU: %s  sm_%d%d  SMs=%d\n", prop.name, prop.major, prop.minor, sm);
-    std::printf("mode=%s n=%d block=%d runs=%d warmup=%d  fwd_bytes=2*n*4  bwd_bytes=3*n*4\n",
+    std::printf("mode=%s n=%d block=%d runs=%d warmup=%d  fwd_bytes=2*n*4  bwd_bytes=3*n*4  "
+                "cudnn=sigmoid\n",
                 mode_name(cfg.mode), cfg.n, cfg.block, cfg.runs, cfg.warmup);
   }
 
   cudaStream_t stream = nullptr;
   CUDA_CHECK(cudaStreamCreate(&stream));
+  CudnnAct cudnn{};
+  cudnn_init(cudnn, stream);
 
   auto make = [&](int n) {
     const int grid = choose_grid(sm, n, cfg.block, cfg.grid);
@@ -375,14 +442,19 @@ int main(int argc, char** argv) {
     FwdRow r;
     r.scalar = time_fwd_scalar(b, cfg.runs, cfg.warmup);
     r.vec4 = time_fwd_vec4(b, cfg.runs, cfg.warmup);
+    r.cudnn = time_fwd_cudnn(b, cudnn, cfg.runs, cfg.warmup);
     return r;
   };
 
   if (cfg.mode == Mode::Sweep) {
     if (!cfg.csv_only) {
-      std::printf("CSV: n,scalar_ms,vec4_ms,scalar_over_vec4,scalar_GBps,vec4_GBps\n");
+      std::printf(
+          "CSV: n,scalar_ms,vec4_ms,cudnn_ms,scalar_over_vec4,vec4_over_cudnn,scalar_GBps,vec4_GBps,"
+          "cudnn_GBps\n");
     }
-    std::printf("SWEEP,n,scalar_ms,vec4_ms,scalar_over_vec4,scalar_GBps,vec4_GBps\n");
+    std::printf(
+        "SWEEP,n,scalar_ms,vec4_ms,cudnn_ms,scalar_over_vec4,vec4_over_cudnn,scalar_GBps,vec4_GBps,"
+        "cudnn_GBps\n");
     const int sizes[] = {1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26, 1 << 27, 1 << 28};
     for (int n : sizes) {
       Buffers b = make(n);
@@ -391,27 +463,31 @@ int main(int argc, char** argv) {
     }
   } else if (cfg.mode == Mode::Modes) {
     Buffers b = make(cfg.n);
-    if (!cfg.csv_only) std::printf("modes n=%d (fwd + bwd)\n", cfg.n);
+    if (!cfg.csv_only) std::printf("modes n=%d (fwd + bwd + cudnn)\n", cfg.n);
     print_fwd(cfg.n, run_fwd(b), cfg.csv_only);
     const float bs = time_bwd_scalar(b, cfg.runs, cfg.warmup);
     const float bv = time_bwd_vec4(b, cfg.runs, cfg.warmup);
+    const float bc = time_bwd_cudnn(b, cudnn, cfg.runs, cfg.warmup);
     if (!cfg.csv_only) {
-      std::printf("bwd scalar=%.4f ms (%.1f GB/s) vec4=%.4f ms (%.1f GB/s) scalar/vec4=%.3f\n", bs,
-                  bwd_gbps(cfg.n, bs), bv, bwd_gbps(cfg.n, bv), bs / bv);
+      std::printf(
+          "bwd scalar=%.4f ms (%.1f GB/s) vec4=%.4f ms (%.1f GB/s) cudnn=%.4f ms (%.1f GB/s) "
+          "vec4/cudnn=%.3f\n",
+          bs, bwd_gbps(cfg.n, bs), bv, bwd_gbps(cfg.n, bv), bc, bwd_gbps(cfg.n, bc), bv / bc);
     }
-    std::printf("BWD,%d,%.4f,%.4f,%.4f,%.1f,%.1f\n", cfg.n, bs, bv, bs / bv, bwd_gbps(cfg.n, bs),
-                bwd_gbps(cfg.n, bv));
+    std::printf("BWD,%d,%.4f,%.4f,%.4f,%.4f,%.1f,%.1f,%.1f\n", cfg.n, bs, bv, bc, bv / bc,
+                bwd_gbps(cfg.n, bs), bwd_gbps(cfg.n, bv), bwd_gbps(cfg.n, bc));
     free_buffers(b);
   } else if (cfg.mode == Mode::Bwd) {
     Buffers b = make(cfg.n);
     const float bs = time_bwd_scalar(b, cfg.runs, cfg.warmup);
     const float bv = time_bwd_vec4(b, cfg.runs, cfg.warmup);
+    const float bc = time_bwd_cudnn(b, cudnn, cfg.runs, cfg.warmup);
     if (!cfg.csv_only) {
-      std::printf("bwd n=%d scalar=%.4f ms (%.1f GB/s) vec4=%.4f ms (%.1f GB/s)\n", cfg.n, bs,
-                  bwd_gbps(cfg.n, bs), bv, bwd_gbps(cfg.n, bv));
+      std::printf("bwd n=%d scalar=%.4f vec4=%.4f cudnn=%.4f ms  vec4/cudnn=%.3f\n", cfg.n, bs, bv,
+                  bc, bv / bc);
     }
-    std::printf("BWD,%d,%.4f,%.4f,%.4f,%.1f,%.1f\n", cfg.n, bs, bv, bs / bv, bwd_gbps(cfg.n, bs),
-                bwd_gbps(cfg.n, bv));
+    std::printf("BWD,%d,%.4f,%.4f,%.4f,%.4f,%.1f,%.1f,%.1f\n", cfg.n, bs, bv, bc, bv / bc,
+                bwd_gbps(cfg.n, bs), bwd_gbps(cfg.n, bv), bwd_gbps(cfg.n, bc));
     warn_if_tiny(bv);
     free_buffers(b);
   } else if (cfg.mode == Mode::Scalar) {
@@ -423,7 +499,7 @@ int main(int argc, char** argv) {
     std::printf("SINGLE,scalar,%d,%.4f,%.1f\n", cfg.n, ms, fwd_gbps(cfg.n, ms));
     warn_if_tiny(ms);
     free_buffers(b);
-  } else {
+  } else if (cfg.mode == Mode::Vec4) {
     Buffers b = make(cfg.n);
     const float ms = time_fwd_vec4(b, cfg.runs, cfg.warmup);
     if (!cfg.csv_only) {
@@ -432,8 +508,18 @@ int main(int argc, char** argv) {
     std::printf("SINGLE,vec4,%d,%.4f,%.1f\n", cfg.n, ms, fwd_gbps(cfg.n, ms));
     warn_if_tiny(ms);
     free_buffers(b);
+  } else {
+    Buffers b = make(cfg.n);
+    const float ms = time_fwd_cudnn(b, cudnn, cfg.runs, cfg.warmup);
+    if (!cfg.csv_only) {
+      std::printf("n=%d cudnn=%.4f ms (%.1f GB/s)\n", cfg.n, ms, fwd_gbps(cfg.n, ms));
+    }
+    std::printf("SINGLE,cudnn,%d,%.4f,%.1f\n", cfg.n, ms, fwd_gbps(cfg.n, ms));
+    warn_if_tiny(ms);
+    free_buffers(b);
   }
 
+  cudnn_destroy(cudnn);
   CUDA_CHECK(cudaStreamDestroy(stream));
   return 0;
 }

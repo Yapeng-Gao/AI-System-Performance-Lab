@@ -54,6 +54,31 @@ macro(create_cuda_example target_name source_file)
         message(STATUS "[Example] ${target_name}: Linked with cuBLAS")
     endif()
 
+    # --- 逻辑 C2: 检测是否需要 cuDNN（D-04/D-05 激活对照等） ---
+    string(FIND "${source_content}" "cudnn.h" found_cudnn)
+    if(found_cudnn GREATER_EQUAL 0)
+        set(_cudnn_root "")
+        if(DEFINED ENV{CUDNN_ROOT} AND EXISTS "$ENV{CUDNN_ROOT}/include/cudnn.h")
+            set(_cudnn_root "$ENV{CUDNN_ROOT}")
+        elseif(EXISTS "$ENV{HOME}/cudnn-9.12/include/cudnn.h")
+            set(_cudnn_root "$ENV{HOME}/cudnn-9.12")
+        endif()
+        find_path(ASPL_CUDNN_INCLUDE_DIR cudnn.h
+            HINTS ${_cudnn_root}/include /usr/include /usr/local/include
+            PATH_SUFFIXES include)
+        find_library(ASPL_CUDNN_LIBRARY cudnn
+            HINTS ${_cudnn_root}/lib ${_cudnn_root}/lib64 /usr/lib /usr/local/lib
+            PATH_SUFFIXES lib lib64)
+        if(ASPL_CUDNN_INCLUDE_DIR AND ASPL_CUDNN_LIBRARY)
+            target_include_directories(${target_name} PRIVATE ${ASPL_CUDNN_INCLUDE_DIR})
+            target_link_libraries(${target_name} PRIVATE ${ASPL_CUDNN_LIBRARY})
+            message(STATUS "[Example] ${target_name}: Linked with cuDNN (${ASPL_CUDNN_LIBRARY})")
+        else()
+            message(FATAL_ERROR
+                "${target_name} needs cuDNN (cudnn.h). Set CUDNN_ROOT or install cuDNN.")
+        endif()
+    endif()
+
     # --- 逻辑 D: 编译选项配置 ---
     # 启用 CUDA 分离编译 (仅针对 .cu 文件)
     if(abs_source_file MATCHES "\\.cu$")
