@@ -1,16 +1,19 @@
 # D-01 写作大纲：Device Reduction
 
-> 状态：✅ **float 阶梯已收口。** 5090：256 MiB～1 GiB，`scalar/vec4` = **1.128× / 1.146× / 1.154×**；1 GiB 上 vec4 / twopass / CUB = 0.646 / 0.645 / 0.645 ms。max_rel ≈ **1e-5**。int 归档见 [`../results/D-01_sweep_int.csv`](../results/D-01_sweep_int.csv)。不要按这篇开 D-02，等用户点名。
+> 状态：✅ **float 阶梯已收口**（新主机 sm_120 复测）。5090：256 MiB～1 GiB，`scalar/vec4` ≈ **1.15×**；1 GiB 上 vec4 / twopass / CUB ≈ 0.638 / 0.639 / 0.639 ms，`vec4/cub`≈**1.00**。max_rel ≈ **1e-5**。int 归档见 [`../results/D-01_sweep_int.csv`](../results/D-01_sweep_int.csv)。
 >
 > 导航：[`../CUDA专栏规划.md`](../CUDA专栏规划.md) · 模块：[`Module-D.md`](Module-D.md)
 >
-> **路线**：Microbench-first。一章一个算子，档是 scalar → vec4 → 第二次 kernel（只有还离 CUB 远才当结论）→ `cub::DeviceReduce::Sum`。
+> **路线**：手写算子。档：scalar → vec4 → twopass → `cub::DeviceReduce::Sum`。达标=达到 CUB；本章大数组未超过。
 >
 > **硬件门槛**：不限 sm_90+。`cub::DeviceReduce` 随 CUDA toolkit 的 CCCL 头文件。float `atomicAdd` 全架构可用。
 >
 > **目录**：`article/04_operators/` · `examples/04_operators/01_device_reduce.cu`
+>
+> **正文目录**：TL;DR → 定义与形状 → 版本表 → 本机数字与判停 → 生产建议 → 下一算子 → 参考文献。  
+> **配图**：封面=DeviceReduce→CUB；原理图=版本阶梯；实测图=`scalar/vec4` + `vec4/cub`。
 
-**标题（拟定）**：`D-01. Device Reduction：大数组求和、向量化加载与何时不用第二次 kernel`
+**标题**：`D-01. DeviceReduce：手写求和达到 CUB`
 
 ## 与前后章的边界
 

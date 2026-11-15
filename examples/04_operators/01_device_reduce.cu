@@ -1,5 +1,5 @@
 /**
- * [Module D] D-01. Device reduction：float 大数组求和
+ * [Module D] D-01. DeviceReduce：手写求和达到 CUB
  *
  * x[i] = (float)(i & 255)。n 是 256 的倍数时，host double 真值是 n * 255 / 2。
  * 相对误差须 <= 1e-3。float 的 ulp 在大 n 上盖过「少加一个元素」，

@@ -47,7 +47,14 @@ macro(create_cuda_example target_name source_file)
         message(STATUS "[Example] ${target_name}: Linked with NVRTC & Driver API")
     endif()
 
-    # --- 逻辑 C: 编译选项配置 ---
+    # --- 逻辑 C: 检测是否需要 cuBLAS（D-02 Dot 等） ---
+    string(FIND "${source_content}" "cublas_v2.h" found_cublas)
+    if(found_cublas GREATER_EQUAL 0)
+        target_link_libraries(${target_name} PRIVATE CUDA::cublas)
+        message(STATUS "[Example] ${target_name}: Linked with cuBLAS")
+    endif()
+
+    # --- 逻辑 D: 编译选项配置 ---
     # 启用 CUDA 分离编译 (仅针对 .cu 文件)
     if(abs_source_file MATCHES "\\.cu$")
         set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Plot D-01 device-reduce sweep and mechanism figures.
+"""D-01 operator-card figures.
 
-Reads docs/results/D-01_sweep.csv.
-Writes:
-  article/04_operators/assets/D-01-device-reduce-cover.png
-  article/04_operators/assets/D-01-fig1-scalar-vs-float4.png
-  article/04_operators/assets/D-01-speedup-vs-n.png
+Cover  = DeviceReduce → CUB
+Fig1   = version ladder (scalar → vec4 → twopass → cub)
+Speed  = scalar/vec4 + vec4/cub vs n
 """
 
 from __future__ import annotations
@@ -22,14 +20,10 @@ SWEEP_CSV = ROOT / "docs" / "results" / "D-01_sweep.csv"
 OUT_DIR = ROOT / "article" / "04_operators" / "assets"
 OUT_SPEED = OUT_DIR / "D-01-speedup-vs-n.png"
 OUT_COVER = OUT_DIR / "D-01-device-reduce-cover.png"
-OUT_FIG1 = OUT_DIR / "D-01-fig1-scalar-vs-float4.png"
+OUT_FIG1 = OUT_DIR / "D-01-fig1-version-ladder.png"
 
-BG = "#0d1117"
-FG = "#e6edf3"
-GRID = "#30363d"
-CYAN = "#39c5cf"
-AMBER = "#f0a202"
-GREEN = "#3fb950"
+BG, FG, GRID = "#0d1117", "#e6edf3", "#30363d"
+CYAN, AMBER, GREEN, MUTED = "#39c5cf", "#f0a202", "#3fb950", "#8b949e"
 
 
 def _style(ax) -> None:
@@ -39,27 +33,21 @@ def _style(ax) -> None:
         spine.set_color(GRID)
     ax.xaxis.label.set_color(FG)
     ax.yaxis.label.set_color(FG)
-    ax.title.set_color(FG)
     ax.grid(True, ls="--", color=GRID, alpha=0.7)
 
 
-def _box(ax, xy, w, h, color: str) -> None:
+def _box(ax, xy, w, h, color: str, alpha: float = 0.9) -> None:
     ax.add_patch(
         FancyBboxPatch(
-            xy,
-            w,
-            h,
+            xy, w, h,
             boxstyle="round,pad=0.02,rounding_size=0.08",
-            linewidth=1.4,
-            edgecolor=color,
-            facecolor=color,
-            alpha=0.9,
+            linewidth=1.4, edgecolor=color, facecolor=color, alpha=alpha,
         )
     )
 
 
-def _canvas():
-    fig, ax = plt.subplots(figsize=(12.8, 7.2), facecolor=BG)
+def _canvas(w=12.8, h=7.2):
+    fig, ax = plt.subplots(figsize=(w, h), facecolor=BG)
     ax.set_facecolor(BG)
     ax.set_xlim(0, 16)
     ax.set_ylim(0, 9)
@@ -68,11 +56,22 @@ def _canvas():
 
 
 def draw_cover() -> None:
+    """Operator name → ceiling library."""
     fig, ax = _canvas()
-    _box(ax, (1.2, 3.2), 5.6, 2.4, CYAN)
-    _box(ax, (9.0, 3.2), 5.6, 2.4, AMBER)
-    ax.text(4.0, 4.4, "scalar", color=BG, fontsize=28, ha="center", va="center", fontweight="bold")
-    ax.text(11.8, 4.4, "float4", color=BG, fontsize=28, ha="center", va="center", fontweight="bold")
+    _box(ax, (1.0, 3.0), 6.0, 3.0, CYAN)
+    ax.text(4.0, 4.9, "DeviceReduce", color=BG, fontsize=26, ha="center",
+            va="center", fontweight="bold")
+    ax.text(4.0, 3.7, "hand-written sum", color=BG, fontsize=16, ha="center", va="center", alpha=0.85)
+
+    ax.annotate(
+        "", xy=(10.2, 4.5), xytext=(7.4, 4.5),
+        arrowprops=dict(arrowstyle="-|>", color=FG, lw=2.5, mutation_scale=18),
+    )
+
+    _box(ax, (10.4, 3.0), 4.6, 3.0, GREEN)
+    ax.text(12.7, 4.9, "CUB", color=BG, fontsize=28, ha="center",
+            va="center", fontweight="bold")
+    ax.text(12.7, 3.7, "reach ≈ 1.00", color=BG, fontsize=16, ha="center", va="center")
     fig.tight_layout(pad=0.6)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT_COVER, dpi=160, facecolor=BG)
@@ -81,13 +80,26 @@ def draw_cover() -> None:
 
 
 def draw_fig1() -> None:
+    """Version ladder — one figure, one conclusion."""
     fig, ax = _canvas()
-    _box(ax, (1.0, 5.6), 6.2, 1.6, CYAN)
-    _box(ax, (1.0, 2.4), 6.2, 1.6, AMBER)
-    ax.text(4.1, 6.4, "ld.32", color=BG, fontsize=22, ha="center", va="center", fontweight="bold")
-    ax.text(4.1, 3.2, "ld.128", color=BG, fontsize=22, ha="center", va="center", fontweight="bold")
-    ax.text(9.2, 4.8, "one atomic", color=FG, fontsize=22)
-    ax.text(9.2, 3.4, "or 2nd kernel", color=FG, fontsize=18, alpha=0.85)
+    steps = [
+        (0.6, "scalar", CYAN, "ld.32 + atomic"),
+        (4.5, "vec4", AMBER, "ld.128 + atomic"),
+        (8.4, "twopass", MUTED, "partials + 2nd"),
+        (12.3, "CUB", GREEN, "library tree"),
+    ]
+    for x, title, color, sub in steps:
+        _box(ax, (x, 3.2), 3.2, 2.8, color)
+        ax.text(x + 1.6, 5.0, title, color=BG, fontsize=22, ha="center",
+                va="center", fontweight="bold")
+        ax.text(x + 1.6, 3.9, sub, color=BG, fontsize=13, ha="center", va="center")
+    for x0 in (3.7, 7.6, 11.5):
+        ax.annotate(
+            "", xy=(x0 + 0.7, 4.6), xytext=(x0, 4.6),
+            arrowprops=dict(arrowstyle="-|>", color=FG, lw=1.8, mutation_scale=14),
+        )
+    ax.text(8.0, 1.6, "large-n: only scalar→vec4 moves; then stick to CUB",
+            color=FG, fontsize=15, ha="center")
     fig.tight_layout(pad=0.6)
     fig.savefig(OUT_FIG1, dpi=160, facecolor=BG)
     plt.close(fig)
@@ -98,23 +110,19 @@ def draw_speedup() -> None:
     if not SWEEP_CSV.is_file():
         print(f"skip plot: missing {SWEEP_CSV}")
         return
-    ns: list[int] = []
-    vec: list[float] = []
-    cub: list[float] = []
-    vc: list[float] = []
+    ns, vec, vc = [], [], []
     with SWEEP_CSV.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
             ns.append(int(row["n"]))
             vec.append(float(row["scalar_over_vec4"]))
-            cub.append(float(row["scalar_over_cub"]))
             vc.append(float(row.get("vec4_over_cub", float(row["vec4_ms"]) / float(row["cub_ms"]))))
     x = np.asarray(ns, dtype=float)
     fig, ax = plt.subplots(figsize=(8.5, 4.8), facecolor=BG)
     _style(ax)
     ax.plot(x, vec, "o-", color=CYAN, lw=2, ms=8, label="scalar/vec4")
-    ax.plot(x, cub, "s-", color=AMBER, lw=2, ms=7, label="scalar/cub")
     ax.plot(x, vc, "^-", color=GREEN, lw=2, ms=7, label="vec4/cub")
     ax.axhline(1.0, color=FG, ls=":", lw=1.2, alpha=0.7)
+    ax.axvline(2**26, color=MUTED, ls="--", lw=1.0, alpha=0.6)
     ax.set_xscale("log", base=2)
     ax.set_ylim(0.5, 1.7)
     ax.set_xlabel("n (float elements)")
