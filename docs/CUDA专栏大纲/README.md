@@ -43,7 +43,7 @@
 | [D-04_sigmoid.md](D-04_sigmoid.md) | ✅ | 短章；~1.50 TB/s 仍贴带宽，未打成算力墙 |
 | [D-05_relu.md](D-05_relu.md) | ✅ | 短章；~1.50 TB/s，与 D-04 同墙 |
 | [D-06_elu.md](D-06_elu.md) | ✅ | 短章；`vec4/cudnn`≈1.01；负半轴 exp 未掉出 |
-| [D-07_gelu.md](D-07_gelu.md) | ✅ | 短章；tanh≈erf≈1.50 TB/s；host+带宽；无 Activation |
+| [D-07_gelu.md](D-07_gelu.md) | ✅ | 短章；学习链回改；tanh≈erf≈1.50 TB/s；host+带宽 |
 | [archive/](archive/README.md) | 📦 | 已发布 Module B 大纲归档（B-06 / B-10） |
 
 **约定**：新章大纲新建 `A-0N_*` / `B-0N_*` / `C-0N_*.md`，在导航总表加一行链接；不要把长大纲塞回 `CUDA专栏规划.md`。  

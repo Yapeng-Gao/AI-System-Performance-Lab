@@ -4,7 +4,7 @@
 > 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-05_relu.md`](D-05_relu.md)  
 > **定位**：负半轴带 `exp`。本机：`vec4/cudnn`≈**1.01**，**未掉出**带宽。
 
-**标题**：`D-06. ELU：负半轴带 exp，是否掉出带宽`
+**标题**：`D-06. ELU 达到 cuDNN`
 
 ## 边界
 
@@ -25,6 +25,6 @@
 
 ## 本机结论（已测）
 
-- 正文：[`article/04_operators/D-06. ELU：负半轴带 exp，是否掉出带宽.md`](../../article/04_operators/D-06.%20ELU：负半轴带%20exp，是否掉出带宽.md)
+- 正文：[`article/04_operators/D-06. ELU 达到 cuDNN.md`](../../article/04_operators/D-06.%20ELU%20达到%20cuDNN.md)
 - 结果：[`docs/results/D-06_elu.md`](../results/D-06_elu.md)
 - `vec4/cudnn`≈**1.01**；~**1.50 TB/s**

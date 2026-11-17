@@ -60,7 +60,7 @@ def draw_cover() -> None:
     _box(ax, (1.0, 3.0), 6.0, 3.0, CYAN)
     ax.text(4.0, 4.9, "Dot", color=BG, fontsize=30, ha="center",
             va="center", fontweight="bold")
-    ax.text(4.0, 3.7, "hand-written dot", color=BG, fontsize=15, ha="center", va="center", alpha=0.85)
+    ax.text(4.0, 3.7, "dot → cublasSdot", color=BG, fontsize=15, ha="center", va="center", alpha=0.85)
 
     ax.annotate(
         "", xy=(10.2, 4.5), xytext=(7.4, 4.5),

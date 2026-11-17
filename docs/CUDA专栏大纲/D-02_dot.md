@@ -11,7 +11,7 @@
 >
 > **正文目录**：算子卡六节。配图：封面=Dot→cublasSdot；原理图=两路读；实测图=`vec4/cublas`。
 
-**标题**：`D-02. Dot：手写点积达到 cublasSdot`
+**标题**：`D-02. 点积达到 cublasSdot`
 
 ## 与前后章的边界
 

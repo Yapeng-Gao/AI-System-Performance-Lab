@@ -3,6 +3,7 @@
 
 Cover  = DeviceReduce → CUB
 Fig1   = version ladder (scalar → vec4 → twopass → cub)
+Fig2   = kernel dataflow (grid-stride → block_sum → atomic | twopass)
 Speed  = scalar/vec4 + vec4/cub vs n
 """
 
@@ -21,6 +22,7 @@ OUT_DIR = ROOT / "article" / "04_operators" / "assets"
 OUT_SPEED = OUT_DIR / "D-01-speedup-vs-n.png"
 OUT_COVER = OUT_DIR / "D-01-device-reduce-cover.png"
 OUT_FIG1 = OUT_DIR / "D-01-fig1-version-ladder.png"
+OUT_FIG2 = OUT_DIR / "D-01-fig2-kernel-flow.png"
 
 BG, FG, GRID = "#0d1117", "#e6edf3", "#30363d"
 CYAN, AMBER, GREEN, MUTED = "#39c5cf", "#f0a202", "#3fb950", "#8b949e"
@@ -61,7 +63,7 @@ def draw_cover() -> None:
     _box(ax, (1.0, 3.0), 6.0, 3.0, CYAN)
     ax.text(4.0, 4.9, "DeviceReduce", color=BG, fontsize=26, ha="center",
             va="center", fontweight="bold")
-    ax.text(4.0, 3.7, "hand-written sum", color=BG, fontsize=16, ha="center", va="center", alpha=0.85)
+    ax.text(4.0, 3.7, "sum → CUB", color=BG, fontsize=16, ha="center", va="center", alpha=0.85)
 
     ax.annotate(
         "", xy=(10.2, 4.5), xytext=(7.4, 4.5),
@@ -106,6 +108,70 @@ def draw_fig1() -> None:
     print(f"wrote {OUT_FIG1}")
 
 
+def draw_fig2() -> None:
+    """Kernel logic: grid-stride → accumulate → block_sum(warp_sum) → fork."""
+    fig, ax = _canvas(w=12.8, h=8.2)
+    ax.set_ylim(0, 11)
+
+    # 1) grid-stride
+    _box(ax, (3.5, 9.3), 9.0, 1.3, MUTED, alpha=0.9)
+    ax.text(8.0, 10.15, "grid-stride load  x[0..n)", color=BG, fontsize=16,
+            ha="center", va="center", fontweight="bold")
+    ax.text(8.0, 9.55, "i = bid*bdim+tid ;  i += bdim*gdim", color=BG, fontsize=12,
+            ha="center", va="center")
+
+    ax.annotate("", xy=(8.0, 8.35), xytext=(8.0, 9.25),
+                arrowprops=dict(arrowstyle="-|>", color=FG, lw=1.8, mutation_scale=14))
+
+    # 2) thread accumulate
+    _box(ax, (4.5, 7.0), 7.0, 1.3, CYAN)
+    ax.text(8.0, 7.85, "thread accumulate", color=BG, fontsize=16,
+            ha="center", va="center", fontweight="bold")
+    ax.text(8.0, 7.25, "acc_scalar / acc_vec4", color=BG, fontsize=12, ha="center", va="center")
+
+    ax.annotate("", xy=(8.0, 5.85), xytext=(8.0, 6.95),
+                arrowprops=dict(arrowstyle="-|>", color=FG, lw=1.8, mutation_scale=14))
+
+    # 3) block_sum with warp_sum callout
+    _box(ax, (2.2, 4.2), 11.6, 1.55, AMBER)
+    ax.text(8.0, 5.25, "block_sum", color=BG, fontsize=16,
+            ha="center", va="center", fontweight="bold")
+    ax.text(8.0, 4.55, "warp_sum (C-01)  →  SMEM[8]  →  warp0 + warp_sum", color=BG,
+            fontsize=12, ha="center", va="center")
+
+    ax.annotate("", xy=(8.0, 3.35), xytext=(8.0, 4.15),
+                arrowprops=dict(arrowstyle="-|>", color=FG, lw=1.8, mutation_scale=14))
+    ax.text(8.35, 3.65, "thread0 holds block partial", color=FG, fontsize=11, ha="left", va="center")
+
+    # 4) fork
+    _box(ax, (0.8, 0.85), 6.4, 2.3, GREEN)
+    ax.text(4.0, 2.55, "vec4 path", color=BG, fontsize=16, ha="center",
+            va="center", fontweight="bold")
+    ax.text(4.0, 1.85, "atomicAdd(out, partial)", color=BG, fontsize=13, ha="center", va="center")
+    ax.text(4.0, 1.2, "kernel_vec4  (+ memset)", color=BG, fontsize=12, ha="center", va="center")
+
+    _box(ax, (8.8, 0.85), 6.4, 2.3, MUTED, alpha=0.95)
+    ax.text(12.0, 2.55, "twopass path", color=BG, fontsize=16, ha="center",
+            va="center", fontweight="bold")
+    ax.text(12.0, 1.85, "partials[bid] → finalize", color=BG, fontsize=13, ha="center", va="center")
+    ax.text(12.0, 1.2, "kernel_partial + kernel_finalize", color=BG, fontsize=11,
+            ha="center", va="center")
+
+    ax.annotate("", xy=(4.0, 3.2), xytext=(6.6, 3.35),
+                arrowprops=dict(arrowstyle="-|>", color=FG, lw=1.6, mutation_scale=12))
+    ax.annotate("", xy=(12.0, 3.2), xytext=(9.4, 3.35),
+                arrowprops=dict(arrowstyle="-|>", color=FG, lw=1.6, mutation_scale=12))
+
+    ax.text(8.0, 0.25, "same block_sum; only the hand-off to global sum changes",
+            color=FG, fontsize=12, ha="center")
+
+    fig.tight_layout(pad=0.4)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    fig.savefig(OUT_FIG2, dpi=160, facecolor=BG)
+    plt.close(fig)
+    print(f"wrote {OUT_FIG2}")
+
+
 def draw_speedup() -> None:
     if not SWEEP_CSV.is_file():
         print(f"skip plot: missing {SWEEP_CSV}")
@@ -138,4 +204,5 @@ def draw_speedup() -> None:
 if __name__ == "__main__":
     draw_cover()
     draw_fig1()
+    draw_fig2()
     draw_speedup()

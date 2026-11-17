@@ -10,10 +10,11 @@
 >
 > **目录**：`article/04_operators/` · `examples/04_operators/01_device_reduce.cu`
 >
-> **正文目录**：TL;DR → 定义与形状 → 版本表 → 本机数字与判停 → 生产建议 → 下一算子 → 参考文献。  
-> **配图**：封面=DeviceReduce→CUB；原理图=版本阶梯；实测图=`scalar/vec4` + `vec4/cub`。
+> **正文目录（学习链）**：TL;DR → 求和：读 N 写 1 → 四档版本 → 手写主路径 → 复现与正确性 → 达到 CUB → 生产建议 → 下一算子 → 参考文献。  
+> **配图**：封面=DeviceReduce→CUB；原理图=版本阶梯 + kernel 流；实测图=`scalar/vec4` + `vec4/cub`。  
+> **样板**：D-01 已按学习链改完（小节标题扫目录能懂）；D-02～D-07 已按同学学习链回改。
 
-**标题**：`D-01. DeviceReduce：手写求和达到 CUB`
+**标题**：`D-01. 求和达到 CUB`
 
 ## 与前后章的边界
 

@@ -4,7 +4,7 @@
 > 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-06_elu.md`](D-06_elu.md)  
 > **定位**：手写一元 GELU。主尺子 = 有效带宽 + host 真值；写清 **erf 精确式** 与 **tanh 近似** 的数值差。legacy `cudnnActivation*` **无 GELU**。
 
-**标题**：`D-07. GELU：tanh 近似与 erf，是否掉出带宽`
+**标题**：`D-07. GELU 贴带宽`
 
 ## 边界
 
@@ -25,14 +25,15 @@
 4. **判停**：右半段 ~**1.50 TB/s**；`tanh_vec4/erf_vec4`≈1 → 未掉出。
 5. **官方**：legacy Activation **无 GELU**；Graph 默认不做。
 
-## 正文结构（算子卡）
+## 正文结构（学习链）
 
-1. 定义与形状  
-2. 版本表  
-3. 实现思路与代码（`gelu_*_f` + harness + 计时）  
-4. 本机数字与判停（含 tanh vs erf 误差一句）  
-5. 生产建议  
-6. 下一算子 → D-08 Swish  
+1. GELU：erf 与 tanh 近似  
+2. 两档公式  
+3. 手写主路径  
+4. 复现与正确性  
+5. 贴带宽  
+6. 生产建议 → 7. 下一算子（D-08 Swish）  
+
 
 ## MVP
 
@@ -50,7 +51,7 @@
 
 ## 落地产物
 
-- 正文：[`article/04_operators/D-07. GELU：tanh 近似与 erf，是否掉出带宽.md`](../../article/04_operators/D-07.%20GELU：tanh%20近似与%20erf，是否掉出带宽.md)
+- 正文：[`article/04_operators/D-07. GELU 贴带宽.md`](../../article/04_operators/D-07.%20GELU%20贴带宽.md)
 - 结果：[`docs/results/D-07_gelu.md`](../results/D-07_gelu.md) · [`D-07_sweep.csv`](../results/D-07_sweep.csv)
 - 示例：`examples/04_operators/07_gelu.cu`
 

@@ -4,7 +4,7 @@
 > 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-04_sigmoid.md`](D-04_sigmoid.md)  
 > **定位**：手写一元激活。官方对照 **cuDNN Activation**。本机：`vec4/cudnn`≈**1.01**；与 D-04 同墙。须有「实现思路与代码」。
 
-**标题**：`D-05. ReLU：更轻激活，是否更贴带宽`
+**标题**：`D-05. ReLU 达到 cuDNN`
 
 ## 边界
 
@@ -35,6 +35,6 @@
 
 ## 本机结论（已测）
 
-- 正文：[`article/04_operators/D-05. ReLU：更轻激活，是否更贴带宽.md`](../../article/04_operators/D-05.%20ReLU：更轻激活，是否更贴带宽.md)
+- 正文：[`article/04_operators/D-05. ReLU 达到 cuDNN.md`](../../article/04_operators/D-05.%20ReLU%20达到%20cuDNN.md)
 - 结果：[`docs/results/D-05_relu.md`](../results/D-05_relu.md)
 - `vec4/cudnn`≈**1.01**；前向 ~**1.50 TB/s** → 与 D-04 **同墙**

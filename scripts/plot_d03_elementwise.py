@@ -62,7 +62,7 @@ def draw_cover() -> None:
     _box(ax, (1.0, 3.0), 6.0, 3.0, CYAN)
     ax.text(4.0, 4.9, "Elementwise", color=BG, fontsize=26, ha="center",
             va="center", fontweight="bold")
-    ax.text(4.0, 3.7, "hand-written a+b", color=BG, fontsize=15, ha="center", va="center", alpha=0.85)
+    ax.text(4.0, 3.7, "a+b → BW ceiling", color=BG, fontsize=15, ha="center", va="center", alpha=0.85)
 
     ax.annotate(
         "", xy=(10.2, 4.5), xytext=(7.4, 4.5),

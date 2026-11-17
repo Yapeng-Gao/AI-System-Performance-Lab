@@ -4,7 +4,7 @@
 > 导航：[`Module-D.md`](Module-D.md) · 上章：[`D-03_elementwise.md`](D-03_elementwise.md)  
 > **定位**：手写一元激活。官方对照 **cuDNN Activation**；兼对照带宽。本机：`vec4/cudnn`≈**1.01**，~1.50 TB/s。
 
-**标题**：`D-04. Sigmoid：手写激活，是否算力墙`
+**标题**：`D-04. Sigmoid 达到 cuDNN`
 
 ## 边界
 
@@ -37,7 +37,7 @@
 
 ## 本机结论（已测）
 
-- 正文：[`article/04_operators/D-04. Sigmoid：手写激活，是否算力墙.md`](../../article/04_operators/D-04.%20Sigmoid：手写激活，是否算力墙.md)
+- 正文：[`article/04_operators/D-04. Sigmoid 达到 cuDNN.md`](../../article/04_operators/D-04.%20Sigmoid%20达到%20cuDNN.md)
 - 结果：[`docs/results/D-04_sigmoid.md`](../results/D-04_sigmoid.md)
 - 大数组 `vec4/cudnn`≈**1.01**（达到）；前向 ~**1.50 TB/s**
 - 反传 `n=2^26`：`vec4/cudnn`≈**1.014**

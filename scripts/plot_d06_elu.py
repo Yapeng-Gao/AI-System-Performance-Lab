@@ -43,7 +43,7 @@ def draw_cover() -> None:
     )
     ax.text(4.0, 4.9, "ELU", color=BG, fontsize=28, ha="center",
             va="center", fontweight="bold")
-    ax.text(4.0, 3.7, "neg-axis exp, α=1", color=BG, fontsize=14, ha="center", va="center")
+    ax.text(4.0, 3.7, "neg exp → cuDNN", color=BG, fontsize=14, ha="center", va="center")
     ax.annotate(
         "", xy=(10.2, 4.5), xytext=(7.4, 4.5),
         arrowprops=dict(arrowstyle="-|>", color=FG, lw=2.5, mutation_scale=18),
